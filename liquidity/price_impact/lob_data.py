@@ -1,6 +1,8 @@
 import pandas as pd
 
-UCT_OFFSET = 2  # TODO: confirm
+from liquidity.price_impact.trades_impact import remove_midprice_trades
+
+UCT_OFFSET = 2
 
 
 def load_l3_data(filepath: str) -> pd.DataFrame:
@@ -91,3 +93,11 @@ def shift_prices(df_: pd.DataFrame) -> pd.DataFrame:
     df_['ask_volume'] = df_['ask_volume'].shift().fillna(0)
     df_['bid_volume'] = df_['bid_volume'].shift().fillna(0)
     return df_
+
+
+def clean_lob_data(date: str, df_raw: pd.DataFrame) -> pd.DataFrame:
+    df = select_trading_hours(date, df_raw)
+    df = select_top_book(df)
+    df = select_columns(df)
+    df = shift_prices(df)
+    return remove_midprice_trades(df)

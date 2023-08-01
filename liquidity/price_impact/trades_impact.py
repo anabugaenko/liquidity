@@ -1,13 +1,11 @@
 import pandas as pd
-import numpy as np
 
 from liquidity.price_impact.price_response import add_daily_features, get_aggregate_response, \
     _normalise_features
-from liquidity.price_impact.load_data import load_l3_data, select_trading_hours, select_top_book, select_columns, \
+from liquidity.price_impact.lob_data import load_l3_data, select_trading_hours, select_top_book, select_columns, \
     shift_prices
-from scipy import stats
 
-from liquidity.price_impact.util import numerate_side
+from liquidity.price_impact.util import numerate_side, _remove_outliers
 
 
 def remove_midprice_trades(df_: pd.DataFrame) -> pd.DataFrame:
@@ -90,27 +88,6 @@ def get_daily_trades_with_impact(filepath: str, date: str):
     return ddf
 
 
-def _remove_outliers(df: pd.DataFrame, T: int) -> pd.DataFrame:
-    """
-    Remove observations where volume imbalance or price response
-    value was beyond three standard deviations of it's mean.
-    """
-    # z = np.abs(stats.zscore(df[['vol_imbalance', f'R{T}']]))
-    # df = df[(z < 3).all(axis=1)]
-
-    def winsorize_queue(s: pd.Series, level: int = 3) -> pd.Series:
-        upper_bound = level * s.std()
-        return s.clip(upper=upper_bound)
-
-    queue_columns = ['vol_imbalance', 'sign_imbalance']
-
-    for name in queue_columns:
-        s = df[name]
-        df[name] = winsorize_queue(s)
-
-    return df
-
-
 def get_aggregate_trade_response_features(df_: pd.DataFrame,
                                           T: int,
                                           normalise: bool = True,
@@ -124,11 +101,3 @@ def get_aggregate_trade_response_features(df_: pd.DataFrame,
     if normalise:
         data = _normalise_features(data, response_column=f'R{T}')
     return data
-
-
-def clean_lob_data(date: str, df_raw: pd.DataFrame) -> pd.DataFrame:
-    df = select_trading_hours(date, df_raw)
-    df = select_top_book(df)
-    df = select_columns(df)
-    df = shift_prices(df)
-    return remove_midprice_trades(df)

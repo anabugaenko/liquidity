@@ -1,11 +1,10 @@
 import pandas as pd
 
 from liquidity.price_impact.lo_impact import remove_midprice_orders, normalise_lo_sizes
-from liquidity.price_impact.load_data import select_trading_hours, load_l3_data, shift_prices, select_top_book, \
+from liquidity.price_impact.lob_data import select_trading_hours, load_l3_data, shift_prices, select_top_book, \
     select_columns
 from liquidity.price_impact.price_response import add_daily_features, get_aggregate_response, _normalise_features
-from liquidity.price_impact.trades_impact import _remove_outliers
-from liquidity.price_impact.util import numerate_side
+from liquidity.price_impact.util import numerate_side, _remove_outliers
 
 
 def select_cancellations(df: pd.DataFrame) -> pd.DataFrame:
@@ -24,8 +23,6 @@ def select_cancellations(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_price_response(df_: pd.DataFrame) -> pd.DataFrame:
-    # all timestamps assumed to be unique
-    #     assert len(df_['event_timestamp'].unique()) == df_.shape[0]
 
     # numerate the side
     df_['sign'] = df_.apply(lambda row: numerate_side(row), axis=1)
