@@ -180,9 +180,6 @@ def get_nonlinear_acf(series: pd.Series, lags: int, method: str) -> List:
         return acl_
 
 
-
-
-
 def remove_outliers(df_, columns=['norm_trade_volume', 'R1'], print_info=True):
     z = np.abs(stats.zscore(df_[columns]))
     if print_info:

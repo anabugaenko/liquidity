@@ -6,7 +6,7 @@ from matplotlib import rc
 import matplotlib.font_manager as font_manager
 import pylab
 
-from liquidity.price_impact.fitting import scale_function
+from liquidity.response_functions.fitting import scale_function
 from liquidity.util.plotting.util import get_data_for_plotting
 
 
