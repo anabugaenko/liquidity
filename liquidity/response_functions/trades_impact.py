@@ -1,11 +1,12 @@
 import pandas as pd
 
 from liquidity.response_functions.price_response import add_daily_features, get_aggregate_response, \
-    _normalise_features
+    add_price_response
+from liquidity.util.data_util import normalise_imbalances
 from liquidity.response_functions.lob_data import load_l3_data, select_trading_hours, select_top_book, select_columns, \
     shift_prices
 
-from liquidity.util.util import numerate_side, _remove_outliers
+from liquidity.util.util import add_order_sign, _remove_outliers
 
 
 def remove_midprice_trades(df_: pd.DataFrame) -> pd.DataFrame:
@@ -16,11 +17,6 @@ def remove_midprice_trades(df_: pd.DataFrame) -> pd.DataFrame:
 def select_executions(df_: pd.DataFrame) -> pd.DataFrame:
     mask = df_['order_executed']
     return df_[mask]
-
-
-def add_order_sign(df_: pd.DataFrame) -> pd.DataFrame:
-    df_['sign'] = df_.apply(lambda row: numerate_side(row), axis=1)
-    return df_
 
 
 def aggregate_same_ts_events(df_: pd.DataFrame) -> pd.DataFrame:
@@ -41,18 +37,6 @@ def aggregate_same_ts_events(df_: pd.DataFrame) -> pd.DataFrame:
         'bid_volume': 'first',
         'price_changing': 'last',
     })
-    return df_
-
-
-def add_price_response(df_: pd.DataFrame, response_column: str = 'R1') -> pd.DataFrame:
-    """
-    Lag one price response of market orders defined as
-    difference in mid-price immediately before subsequent MO
-    and the mid-price immediately before the current MO
-    aligned by the original MO direction.
-    """
-    df_['midprice_change'] = df_['midprice'].diff().shift(-1).fillna(0)
-    df_[response_column] = df_['midprice_change'] * df_.index.get_level_values('sign')
     return df_
 
 
@@ -100,7 +84,7 @@ def get_aggregate_trade_response_features(df_: pd.DataFrame,
     if remove_outliers:
         data = _remove_outliers(data)
     if normalise:
-        data = _normalise_features(data, response_column=f'R{T}')
+        data = normalise_imbalances(data)
     return data
 
 

@@ -3,8 +3,9 @@ import pandas as pd
 from liquidity.response_functions.lo_impact import remove_midprice_orders, normalise_lo_sizes
 from liquidity.response_functions.lob_data import select_trading_hours, load_l3_data, shift_prices, select_top_book, \
     select_columns
-from liquidity.response_functions.price_response import add_daily_features, get_aggregate_response, _normalise_features
-from liquidity.util.util import numerate_side, _remove_outliers
+from liquidity.response_functions.price_response import add_daily_features, get_aggregate_response, add_price_response
+from liquidity.util.data_util import normalise_imbalances
+from liquidity.util.util import numerate_side, _remove_outliers, add_order_sign
 
 
 def select_cancellations(df: pd.DataFrame) -> pd.DataFrame:
@@ -22,17 +23,6 @@ def select_cancellations(df: pd.DataFrame) -> pd.DataFrame:
     return df[mask_complete_removals | mask_partial_removals]
 
 
-def add_price_response(df_: pd.DataFrame) -> pd.DataFrame:
-
-    # numerate the side
-    df_['sign'] = df_.apply(lambda row: numerate_side(row), axis=1)
-
-    # compute directional response
-    df_['midprice_change'] = df_['midprice'].diff().shift(-1).fillna(0)
-    df_['R1_CA'] = df_['midprice_change'] * df_['sign']
-    return df_
-
-
 def rename_price_columns(df_: pd.DataFrame) -> pd.DataFrame:
     df_ = df_.drop(['price', 'size'], axis=1)
     return df_.rename(columns={'old_price': 'price', 'old_size': 'size'})
@@ -45,9 +35,10 @@ def get_daily_ca_arrivals(filepath: str, date: str) -> pd.DataFrame:
     df = select_columns(df)
     df = shift_prices(df)
     df = remove_midprice_orders(df)
+    df = add_order_sign(df)
     df = select_cancellations(df)
     df = rename_price_columns(df)
-    df = add_price_response(df)
+    df = add_price_response(df, response_column='R1_CA')
     df = normalise_lo_sizes(df)
     return df
 
@@ -64,5 +55,5 @@ def get_aggregate_ca_response_features(df_: pd.DataFrame,
     if remove_outliers:
         data = _remove_outliers(data, T=T)
     if normalise:
-        data = _normalise_features(data, response_column=f'R{T}')
+        data = normalise_imbalances(data)
     return data

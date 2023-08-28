@@ -2,22 +2,10 @@ import pandas as pd
 
 from liquidity.response_functions.lo_impact import remove_midprice_orders
 from liquidity.response_functions.lob_data import select_trading_hours, select_columns, shift_prices
-from liquidity.response_functions.price_response import add_daily_features, get_aggregate_response, _normalise_features
+from liquidity.response_functions.price_response import add_daily_features, get_aggregate_response, add_price_response
+from liquidity.util.data_util import normalise_imbalances
 from liquidity.response_functions.trades_impact import remove_midprice_trades
-from liquidity.util.util import numerate_side, _remove_outliers
-
-
-def add_price_response(df_: pd.DataFrame) -> pd.DataFrame:
-    # all timestamps assumed to be unique
-    assert len(df_['event_timestamp'].unique()) == df_.shape[0]
-
-    # numerate the side
-    df_['sign'] = df_.apply(lambda row: numerate_side(row), axis=1)
-
-    # compute directional response
-    df_['midprice_change'] = df_['midprice'].diff().shift(-1).fillna(0)
-    df_['R1'] = df_['midprice_change'] * df_['sign']
-    return df_
+from liquidity.util.util import numerate_side, _remove_outliers, add_order_sign
 
 
 def select_top_book(df: pd.DataFrame) -> pd.DataFrame:
@@ -93,6 +81,7 @@ def get_qa_series(raw_daily_df: pd.DataFrame, date: str) -> pd.DataFrame:
     df = shift_prices(df)
     df = remove_midprice_orders(df)
     df = remove_midprice_trades(df)
+    df = add_order_sign(df)
     df = df.groupby(['event_timestamp']).last()
     df = df.reset_index()
     df = add_price_response(df)
@@ -109,5 +98,5 @@ def get_aggregate_qa_response_features(df_: pd.DataFrame,
     if remove_outliers:
         data = _remove_outliers(data, T=T)
     if normalise:
-        data = _normalise_features(data, response_column=f'R{T}')
+        data = normalise_imbalances(data)
     return data

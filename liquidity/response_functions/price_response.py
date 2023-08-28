@@ -22,17 +22,6 @@ def add_daily_features(df_: pd.DataFrame, response_column: str = 'R1') -> pd.Dat
     return df_
 
 
-def _normalise_features(df_: pd.DataFrame, response_column: str) -> pd. DataFrame:
-    """
-    Normalise volume imbalance by mean daily order size relative to its average;
-    sign imbalance by mean daily number of orders.
-    """
-    df_['vol_imbalance'] = df_['vol_imbalance'] / df_['daily_vol'] * df_['daily_vol'].mean()
-    df_['sign_imbalance'] = df_['sign_imbalance'] / df_['daily_num'] * df_['daily_num'].mean()
-
-    return df_
-
-
 def get_aggregate_response(df_: pd.DataFrame, T: int, response_column: str, log=False) -> pd. DataFrame:
     """
     From a given timeseries of transactions  compute many lag price response
@@ -62,3 +51,15 @@ def get_aggregate_response(df_: pd.DataFrame, T: int, response_column: str, log=
     else:
         df_agg[response_column] = np.log(df_agg['midprice'].shift(-1).fillna(0)) - np.log(df_agg['midprice'])
     return df_agg
+
+
+def add_price_response(df_: pd.DataFrame, response_column: str = 'R1') -> pd.DataFrame:
+    """
+    Lag one price response of market orders defined as
+    difference in mid-price immediately before subsequent MO
+    and the mid-price immediately before the current MO
+    aligned by the original MO direction.
+    """
+    df_['midprice_change'] = df_['midprice'].diff().shift(-1).fillna(0)
+    df_[response_column] = df_['midprice_change'] * df_.index.get_level_values('sign')
+    return df_

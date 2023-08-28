@@ -188,3 +188,14 @@ def remove_outliers(df_, columns=['norm_trade_volume', 'R1'], print_info=True):
     if print_info:
         print(df_.shape)
     return df_
+
+
+def normalise_imbalances(df_: pd.DataFrame) -> pd. DataFrame:
+    """
+    Normalise volume imbalance by mean daily order size relative to its average;
+    sign imbalance by mean daily number of orders.
+    """
+    df_['vol_imbalance'] = df_['vol_imbalance'] / df_['daily_vol'] * df_['daily_vol'].mean()
+    df_['sign_imbalance'] = df_['sign_imbalance'] / df_['daily_num'] * df_['daily_num'].mean()
+
+    return df_

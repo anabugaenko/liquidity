@@ -2,8 +2,9 @@ import pandas as pd
 
 from liquidity.response_functions.lob_data import load_l3_data, select_trading_hours, select_top_book, select_columns, \
     shift_prices
-from liquidity.response_functions.price_response import add_daily_features, get_aggregate_response, _normalise_features
-from liquidity.util.util import numerate_side, _remove_outliers
+from liquidity.response_functions.price_response import add_daily_features, get_aggregate_response, add_price_response
+from liquidity.util.data_util import normalise_imbalances
+from liquidity.util.util import numerate_side, _remove_outliers, add_order_sign
 
 
 def remove_midprice_orders(df_: pd.DataFrame) -> pd.DataFrame:
@@ -24,19 +25,6 @@ def select_lo_inserts(df_: pd.DataFrame) -> pd.DataFrame:
     mask2 = mask2 & (df_['price_changing'] == True)
 
     return df_[mask1 | mask2]
-
-
-def add_price_response(df_: pd.DataFrame) -> pd.DataFrame:
-    # all timestamps assumed to be unique
-    assert len(df_['event_timestamp'].unique()) == df_.shape[0]
-
-    # numerate the side
-    df_['sign'] = df_.apply(lambda row: numerate_side(row), axis=1)
-
-    # compute directional response
-    df_['midprice_change'] = df_['midprice'].diff().shift(-1).fillna(0)
-    df_['R1_LO'] = df_['midprice_change'] * df_['sign']
-    return df_
 
 
 def normalise_lo_sizes(df_: pd.DataFrame) -> pd.DataFrame:
@@ -67,8 +55,9 @@ def get_daily_lo_arrivals(filepath: str, date: str) -> pd.DataFrame:
     df = select_columns(df)
     df = shift_prices(df)
     df = remove_midprice_orders(df)
+    df = add_order_sign(df)
     df = select_lo_inserts(df)
-    df = add_price_response(df)
+    df = add_price_response(df, response_column='R1_LO')
     df = normalise_lo_sizes(df)
     return df
 
@@ -96,7 +85,7 @@ def get_aggregate_lo_response_features(df_: pd.DataFrame,
     if remove_outliers:
         data = _remove_outliers(data, T=T)
     if normalise:
-        data = _normalise_features(data, response_column=f'R{T}')
+        data = normalise_imbalances(data)
     return data
 
 
