@@ -54,14 +54,6 @@ def agg_impact_fit_func(qT, chi, kappa, alpha, beta, gamma):
     return np.power(T, chi) * scale_function(x, alpha, beta) * gamma
 
 
-def agg_impact_fit_func2(qT, alpha, beta, gamma):
-    # Separate input array
-    q = qT[0]
-    T = qT[1]
-    x = q / np.power(T, 0.95)
-    return np.power(T, 0.65) * scale_function(x, alpha, beta) * gamma
-
-
 def agg_impact_fit_func_y_reflect(qT, chi, kappa, alpha, beta, gamma):
     """
     Inverse (on y axis) sigmoid.

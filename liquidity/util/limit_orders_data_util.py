@@ -1,7 +1,7 @@
 import pandas as pd
 
 from liquidity.response_functions.impact import rename_price_columns
-from liquidity.response_functions.lob_data import load_l3_data, select_trading_hours, select_top_book, select_columns, \
+from liquidity.util.lob_data import load_l3_data, select_trading_hours, select_top_book, select_columns, \
     shift_prices
 from liquidity.response_functions.price_response_functions import unconditional_impact
 from liquidity.util.trades_data_util import remove_midprice_trades

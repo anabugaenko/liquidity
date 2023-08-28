@@ -4,7 +4,7 @@ from typing import Optional, List
 from scipy import stats
 from scipy.stats import kendalltau, spearmanr
 
-from liquidity.response_functions.lob_data import select_trading_hours, select_top_book, select_columns, \
+from liquidity.util.lob_data import select_trading_hours, select_top_book, select_columns, \
     shift_prices
 from liquidity.util.limit_orders_data_util import remove_midprice_orders
 
