@@ -1,11 +1,8 @@
 import pandas as pd
 
-from liquidity.response_functions.lo_impact import normalise_lo_sizes
-from liquidity.response_functions.lob_data import select_trading_hours, load_l3_data, shift_prices, select_top_book, \
-    select_columns
-from liquidity.response_functions.price_response_functions import add_daily_features, aggregate_response_function, individual_response_function
-from liquidity.util.data_util import normalise_imbalances, remove_midprice_orders
-from liquidity.util.util import numerate_side, _remove_outliers, add_order_sign
+from liquidity.response_functions.price_response_functions import add_daily_features, aggregate_response_function
+from liquidity.util.data_util import normalise_imbalances
+from liquidity.util.util import _remove_outliers
 
 
 def select_cancellations(df: pd.DataFrame) -> pd.DataFrame:
@@ -26,21 +23,6 @@ def select_cancellations(df: pd.DataFrame) -> pd.DataFrame:
 def rename_price_columns(df_: pd.DataFrame) -> pd.DataFrame:
     df_ = df_.drop(['price', 'size'], axis=1)
     return df_.rename(columns={'old_price': 'price', 'old_size': 'size'})
-
-
-def get_daily_ca_arrivals(filepath: str, date: str) -> pd.DataFrame:
-    data = load_l3_data(filepath)
-    df = select_trading_hours(date, data)
-    df = select_top_book(df)
-    df = select_columns(df)
-    df = shift_prices(df)
-    df = remove_midprice_orders(df)
-    df = add_order_sign(df)
-    df = select_cancellations(df)
-    df = rename_price_columns(df)
-    df = individual_response_function(df, response_column='R1_CA')
-    df = normalise_lo_sizes(df)
-    return df
 
 
 def get_aggregate_ca_response_features(df_: pd.DataFrame,

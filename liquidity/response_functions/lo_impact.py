@@ -1,10 +1,10 @@
 import pandas as pd
 
-from liquidity.response_functions.lob_data import load_l3_data, select_trading_hours, select_top_book, select_columns, \
+from liquidity.response_functions.lob_data import select_trading_hours, select_top_book, select_columns, \
     shift_prices
-from liquidity.response_functions.price_response_functions import add_daily_features, aggregate_response_function, individual_response_function
+from liquidity.response_functions.price_response_functions import add_daily_features, aggregate_response_function
 from liquidity.util.data_util import normalise_imbalances, remove_midprice_orders
-from liquidity.util.util import _remove_outliers, add_order_sign
+from liquidity.util.util import _remove_outliers
 
 
 def select_lo_inserts(df_: pd.DataFrame) -> pd.DataFrame:
@@ -34,27 +34,6 @@ def normalise_lo_sizes(df_: pd.DataFrame) -> pd.DataFrame:
 
     df_['norm_size'] = df_.apply(_normalise, axis=1)
     return df_
-
-
-def get_daily_lo_arrivals(filepath: str, date: str) -> pd.DataFrame:
-    """
-    Loads LOB events timeseries for a day from a file and
-    returns a DataFrame of LO arrivals timeseries.
-    :param filepath:
-    :param date:
-    :return:
-    """
-    data = load_l3_data(filepath)
-    df = select_trading_hours(date, data)
-    df = select_top_book(df)
-    df = select_columns(df)
-    df = shift_prices(df)
-    df = remove_midprice_orders(df)
-    df = add_order_sign(df)
-    df = select_lo_inserts(df)
-    df = individual_response_function(df, response_column='R1_LO')
-    df = normalise_lo_sizes(df)
-    return df
 
 
 def clean_lob_data(date: str, df_raw: pd.DataFrame) -> pd.DataFrame:

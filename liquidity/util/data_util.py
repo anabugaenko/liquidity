@@ -4,6 +4,16 @@ from typing import Optional, List
 from scipy import stats
 from scipy.stats import kendalltau, spearmanr
 
+from liquidity.response_functions.ca_impact import select_cancellations, rename_price_columns
+from liquidity.response_functions.lo_impact import select_lo_inserts, normalise_lo_sizes
+from liquidity.response_functions.lob_data import load_l3_data, select_trading_hours, select_top_book, select_columns, \
+    shift_prices
+from liquidity.response_functions.price_response_functions import individual_response_function
+from liquidity.response_functions.qa_impact import select_top_book
+from liquidity.response_functions.trades_impact import select_executions, aggregate_same_ts_events, \
+    normalise_trade_volume
+from liquidity.util.util import add_order_sign
+
 
 def set_row_groups(start: float, group_size: float, data: pd.DataFrame, column_name: str = 'norm_trade_volume') \
         -> pd.DataFrame:
@@ -204,3 +214,68 @@ def normalise_imbalances(df_: pd.DataFrame) -> pd. DataFrame:
 def remove_midprice_orders(df_: pd.DataFrame) -> pd.DataFrame:
     mask = df_['price'] == df_['midprice']
     return df_[~mask]
+
+
+def get_trades_impact(filepath: str, date: str):
+    data = load_l3_data(filepath)
+    df = select_trading_hours(date, data)
+    df = select_top_book(df)
+    df = select_columns(df)
+    df = shift_prices(df)
+    df = remove_midprice_orders(df)
+    df = add_order_sign(df)
+    ddf = select_executions(df)
+    ddf = aggregate_same_ts_events(ddf)
+    ddf = individual_response_function(ddf)
+    ddf = normalise_trade_volume(ddf, data)
+    return ddf
+
+
+def get_lo_impact(filepath: str, date: str) -> pd.DataFrame:
+    """
+    Loads LOB events timeseries for a day from a file and
+    returns a DataFrame of LO arrivals timeseries.
+    :param filepath:
+    :param date:
+    :return:
+    """
+    data = load_l3_data(filepath)
+    df = select_trading_hours(date, data)
+    df = select_top_book(df)
+    df = select_columns(df)
+    df = shift_prices(df)
+    df = remove_midprice_orders(df)
+    df = add_order_sign(df)
+    df = select_lo_inserts(df)
+    df = individual_response_function(df, response_column='R1_LO')
+    df = normalise_lo_sizes(df)
+    return df
+
+
+def get_ca_impact(filepath: str, date: str) -> pd.DataFrame:
+    data = load_l3_data(filepath)
+    df = select_trading_hours(date, data)
+    df = select_top_book(df)
+    df = select_columns(df)
+    df = shift_prices(df)
+    df = remove_midprice_orders(df)
+    df = add_order_sign(df)
+    df = select_cancellations(df)
+    df = rename_price_columns(df)
+    df = individual_response_function(df, response_column='R1_CA')
+    df = normalise_lo_sizes(df)
+    return df
+
+
+def get_qa_impact(raw_daily_df: pd.DataFrame, date: str) -> pd.DataFrame:
+    df = select_trading_hours(date, raw_daily_df)
+    df = select_top_book(df)
+    df = select_columns(df)
+    df = shift_prices(df)
+    df = remove_midprice_orders(df)
+    df = remove_midprice_trades(df)
+    df = add_order_sign(df)
+    df = df.groupby(['event_timestamp']).last()
+    df = df.reset_index()
+    df = individual_response_function(df)
+    return df
