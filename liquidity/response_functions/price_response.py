@@ -22,10 +22,11 @@ def add_daily_features(df_: pd.DataFrame, response_column: str = 'R1') -> pd.Dat
     return df_
 
 
-def get_aggregate_response(df_: pd.DataFrame, T: int, response_column: str, log=False) -> pd. DataFrame:
+def aggregate_response_function(df_: pd.DataFrame, T: int, response_column: str, log=False) -> pd. DataFrame:
     """
     From a given timeseries of transactions  compute many lag price response
     (T specifies number of lags).
+
     """
 
     if 'norm_size' in df_.columns:
@@ -53,7 +54,7 @@ def get_aggregate_response(df_: pd.DataFrame, T: int, response_column: str, log=
     return df_agg
 
 
-def add_price_response(df_: pd.DataFrame, response_column: str = 'R1') -> pd.DataFrame:
+def individual_response_function(df_: pd.DataFrame, response_column: str = 'R1') -> pd.DataFrame:
     """
     Lag one price response of market orders defined as
     difference in mid-price immediately before subsequent MO

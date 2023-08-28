@@ -1,7 +1,7 @@
 import pandas as pd
 
-from liquidity.response_functions.price_response import add_daily_features, get_aggregate_response, \
-    add_price_response
+from liquidity.response_functions.price_response import add_daily_features, aggregate_response_function, \
+    individual_response_function
 from liquidity.util.data_util import normalise_imbalances
 from liquidity.response_functions.lob_data import load_l3_data, select_trading_hours, select_top_book, select_columns, \
     shift_prices
@@ -67,7 +67,7 @@ def get_daily_trades_with_impact(filepath: str, date: str):
     df = add_order_sign(df)
     ddf = select_executions(df)
     ddf = aggregate_same_ts_events(ddf)
-    ddf = add_price_response(ddf)
+    ddf = individual_response_function(ddf)
     ddf = normalise_trade_volume(ddf, data)
     return ddf
 
@@ -80,7 +80,7 @@ def get_aggregate_trade_response_features(df_: pd.DataFrame,
     data = df_.copy()
     data = data.rename(columns={'execution_size': 'size', 'trade_sign': 'sign'})
     data = add_daily_features(data)
-    data = get_aggregate_response(data, T=T, response_column=f'R{T}', log=log)
+    data = aggregate_response_function(data, T=T, response_column=f'R{T}', log=log)
     if remove_outliers:
         data = _remove_outliers(data)
     if normalise:

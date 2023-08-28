@@ -2,7 +2,7 @@ import pandas as pd
 
 from liquidity.response_functions.lo_impact import remove_midprice_orders
 from liquidity.response_functions.lob_data import select_trading_hours, select_columns, shift_prices
-from liquidity.response_functions.price_response import add_daily_features, get_aggregate_response, add_price_response
+from liquidity.response_functions.price_response import add_daily_features, aggregate_response_function, individual_response_function
 from liquidity.util.data_util import normalise_imbalances
 from liquidity.response_functions.trades_impact import remove_midprice_trades
 from liquidity.util.util import numerate_side, _remove_outliers, add_order_sign
@@ -84,7 +84,7 @@ def get_qa_series(raw_daily_df: pd.DataFrame, date: str) -> pd.DataFrame:
     df = add_order_sign(df)
     df = df.groupby(['event_timestamp']).last()
     df = df.reset_index()
-    df = add_price_response(df)
+    df = individual_response_function(df)
     return df
 
 
@@ -94,7 +94,7 @@ def get_aggregate_qa_response_features(df_: pd.DataFrame,
                                        remove_outliers: bool = False) -> pd.DataFrame:
     data = df_.copy()
     data = add_daily_features(data)
-    data = get_aggregate_response(data, T=T, response_column=f'R{T}')
+    data = aggregate_response_function(data, T=T, response_column=f'R{T}')
     if remove_outliers:
         data = _remove_outliers(data, T=T)
     if normalise:

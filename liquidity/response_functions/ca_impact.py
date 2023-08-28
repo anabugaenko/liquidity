@@ -3,7 +3,7 @@ import pandas as pd
 from liquidity.response_functions.lo_impact import remove_midprice_orders, normalise_lo_sizes
 from liquidity.response_functions.lob_data import select_trading_hours, load_l3_data, shift_prices, select_top_book, \
     select_columns
-from liquidity.response_functions.price_response import add_daily_features, get_aggregate_response, add_price_response
+from liquidity.response_functions.price_response import add_daily_features, aggregate_response_function, individual_response_function
 from liquidity.util.data_util import normalise_imbalances
 from liquidity.util.util import numerate_side, _remove_outliers, add_order_sign
 
@@ -38,7 +38,7 @@ def get_daily_ca_arrivals(filepath: str, date: str) -> pd.DataFrame:
     df = add_order_sign(df)
     df = select_cancellations(df)
     df = rename_price_columns(df)
-    df = add_price_response(df, response_column='R1_CA')
+    df = individual_response_function(df, response_column='R1_CA')
     df = normalise_lo_sizes(df)
     return df
 
@@ -51,7 +51,7 @@ def get_aggregate_ca_response_features(df_: pd.DataFrame,
     data = data.rename(columns={'R1_CA': 'R1'})
     data = rename_price_columns(data)
     data = add_daily_features(data)
-    data = get_aggregate_response(data, T=T, response_column=f'R{T}')
+    data = aggregate_response_function(data, T=T, response_column=f'R{T}')
     if remove_outliers:
         data = _remove_outliers(data, T=T)
     if normalise:

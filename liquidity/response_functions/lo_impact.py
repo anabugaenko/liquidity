@@ -2,7 +2,7 @@ import pandas as pd
 
 from liquidity.response_functions.lob_data import load_l3_data, select_trading_hours, select_top_book, select_columns, \
     shift_prices
-from liquidity.response_functions.price_response import add_daily_features, get_aggregate_response, add_price_response
+from liquidity.response_functions.price_response import add_daily_features, aggregate_response_function, individual_response_function
 from liquidity.util.data_util import normalise_imbalances
 from liquidity.util.util import numerate_side, _remove_outliers, add_order_sign
 
@@ -57,7 +57,7 @@ def get_daily_lo_arrivals(filepath: str, date: str) -> pd.DataFrame:
     df = remove_midprice_orders(df)
     df = add_order_sign(df)
     df = select_lo_inserts(df)
-    df = add_price_response(df, response_column='R1_LO')
+    df = individual_response_function(df, response_column='R1_LO')
     df = normalise_lo_sizes(df)
     return df
 
@@ -81,7 +81,7 @@ def get_aggregate_lo_response_features(df_: pd.DataFrame,
     data = data.rename(columns={'R1_LO': 'R1'})
     data = add_daily_features(data)
     data = data.reset_index(drop=True)
-    data = get_aggregate_response(data, T=T, response_column=f'R{T}')
+    data = aggregate_response_function(data, T=T, response_column=f'R{T}')
     if remove_outliers:
         data = _remove_outliers(data, T=T)
     if normalise:
