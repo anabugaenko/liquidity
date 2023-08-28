@@ -2,8 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit
 
-from liquidity.response_functions.lo_impact import get_aggregate_lo_response_features
-from liquidity.response_functions.trades_impact import get_aggregate_trade_response_features
+from liquidity.response_functions.impact import get_aggregate_impact_series
 
 
 def scale_function(x, alpha, beta):
@@ -85,7 +84,7 @@ def transform_results_df(df_, T, imbalance_col='vol_imbalance'):
 def prepare_data_for_fitting(df_, durations, imbalance_col='vol_imbalance'):
     results_ = []
     for i in range(len(durations)):
-        result = get_aggregate_trade_response_features(df_, T=durations[i])
+        result = get_aggregate_impact_series(df_, T=durations[i])
         results_.append(transform_results_df(result, durations[i], imbalance_col=imbalance_col))
 
     return pd.concat(results_)
@@ -94,7 +93,7 @@ def prepare_data_for_fitting(df_, durations, imbalance_col='vol_imbalance'):
 def prepare_lo_data_for_fitting(df_, durations, imbalance_col='vol_imbalance'):
     results_ = []
     for i in range(len(durations)):
-        result = get_aggregate_lo_response_features(df_, T=durations[i])
+        result = get_aggregate_impact_series(df_, T=durations[i])
         results_.append(transform_results_df(result, durations[i], imbalance_col=imbalance_col))
 
     return pd.concat(results_)
@@ -173,7 +172,7 @@ def bin_data_into_quantiles(df, x_col='vol_imbalance', y_col='R', q=100, duplica
 def get_agg_features(df: pd.DataFrame, durations):
     results_ = []
     for i, T in enumerate(durations):
-        lag_data = get_aggregate_trade_response_features(df, T=T)
+        lag_data = get_aggregate_impact_series(df, T=T)
         lag_data['R'] = lag_data[f'R{T}']
         lag_data = lag_data.drop(columns=f'R{T}')
         lag_data['T']= T

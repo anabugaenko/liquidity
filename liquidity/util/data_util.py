@@ -4,15 +4,9 @@ from typing import Optional, List
 from scipy import stats
 from scipy.stats import kendalltau, spearmanr
 
-from liquidity.response_functions.ca_impact import select_cancellations, rename_price_columns
-from liquidity.response_functions.lo_impact import select_lo_inserts, normalise_lo_sizes
-from liquidity.response_functions.lob_data import load_l3_data, select_trading_hours, select_top_book, select_columns, \
+from liquidity.response_functions.lob_data import select_trading_hours, select_top_book, select_columns, \
     shift_prices
-from liquidity.response_functions.price_response_functions import individual_response_function
-from liquidity.response_functions.qa_impact import select_top_book
-from liquidity.response_functions.trades_impact import select_executions, aggregate_same_ts_events, \
-    normalise_trade_volume
-from liquidity.util.util import add_order_sign
+from liquidity.util.limit_orders_data_util import remove_midprice_orders
 
 
 def set_row_groups(start: float, group_size: float, data: pd.DataFrame, column_name: str = 'norm_trade_volume') \
@@ -211,71 +205,75 @@ def normalise_imbalances(df_: pd.DataFrame) -> pd. DataFrame:
     return df_
 
 
-def remove_midprice_orders(df_: pd.DataFrame) -> pd.DataFrame:
-    mask = df_['price'] == df_['midprice']
-    return df_[~mask]
-
-
-def get_trades_impact(filepath: str, date: str):
-    data = load_l3_data(filepath)
-    df = select_trading_hours(date, data)
+def clean_lob_data(date: str, df_raw: pd.DataFrame) -> pd.DataFrame:
+    df = select_trading_hours(date, df_raw)
     df = select_top_book(df)
     df = select_columns(df)
     df = shift_prices(df)
-    df = remove_midprice_orders(df)
-    df = add_order_sign(df)
-    ddf = select_executions(df)
-    ddf = aggregate_same_ts_events(ddf)
-    ddf = individual_response_function(ddf)
-    ddf = normalise_trade_volume(ddf, data)
-    return ddf
+    return remove_midprice_orders(df)
 
 
-def get_lo_impact(filepath: str, date: str) -> pd.DataFrame:
+def select_top_book(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Loads LOB events timeseries for a day from a file and
-    returns a DataFrame of LO arrivals timeseries.
-    :param filepath:
-    :param date:
-    :return:
+    Need to carefully select only events that affected top book level.
+    By definition selecting events at level 0 and 1 is not accurate for cancellation orders
+    since the level is set to 0 if the removal caused a price level to no longer exist.
     """
-    data = load_l3_data(filepath)
-    df = select_trading_hours(date, data)
-    df = select_top_book(df)
-    df = select_columns(df)
-    df = shift_prices(df)
-    df = remove_midprice_orders(df)
-    df = add_order_sign(df)
-    df = select_lo_inserts(df)
-    df = individual_response_function(df, response_column='R1_LO')
-    df = normalise_lo_sizes(df)
-    return df
+    price_level_mask = (df.price_level == 1) | (df.price_level == 0)
+    old_price_level_mask = (df.old_price_level == 1) | (df.old_price_level == 0)
+    return df[price_level_mask & old_price_level_mask]
 
 
-def get_ca_impact(filepath: str, date: str) -> pd.DataFrame:
-    data = load_l3_data(filepath)
-    df = select_trading_hours(date, data)
-    df = select_top_book(df)
-    df = select_columns(df)
-    df = shift_prices(df)
-    df = remove_midprice_orders(df)
-    df = add_order_sign(df)
-    df = select_cancellations(df)
-    df = rename_price_columns(df)
-    df = individual_response_function(df, response_column='R1_CA')
-    df = normalise_lo_sizes(df)
-    return df
+def normalise_all_sizes(df_: pd.DataFrame):
+    """
+    if execution -> execution_size
+    if insert/LO -> size
+    if cancel/remove -> old size
+    """
 
+    def _select_size_for_order_type(row):
+        mask1 = row['lob_action'] == 'INSERT'
+        mask2 = row['lob_action'] == 'UPDATE'
+        mask2 = mask2 & (row['price_changing'] == True)
+        lo_mask = mask1 | mask2
 
-def get_qa_impact(raw_daily_df: pd.DataFrame, date: str) -> pd.DataFrame:
-    df = select_trading_hours(date, raw_daily_df)
-    df = select_top_book(df)
-    df = select_columns(df)
-    df = shift_prices(df)
-    df = remove_midprice_orders(df)
-    df = remove_midprice_trades(df)
-    df = add_order_sign(df)
-    df = df.groupby(['event_timestamp']).last()
-    df = df.reset_index()
-    df = individual_response_function(df)
-    return df
+        if lo_mask:
+            return row['size']
+
+        mo_mask = row['order_executed']
+
+        if mo_mask:
+            return row['execution_size']
+
+        mask1 = row['lob_action'] == 'REMOVE'
+        mask2 = row['order_executed'] == False
+        mask3 = row['old_price_level'] == 1
+        mask_complete_removals = mask1 & mask2 & mask3
+
+        mask4 = row['lob_action'] == 'UPDATE'
+        mask5 = row['order_executed'] == False
+        mask6 = row['old_price_level'] == 1
+        mask7 = row['size'] < row['old_size']
+        mask_partial_removals = mask4 & mask5 & mask6 & mask7
+        ca_mask = mask_complete_removals | mask_partial_removals
+
+        if ca_mask:
+            return row['old_size']
+
+        return 0
+
+    df_['new_size'] = df_.apply(lambda row: _select_size_for_order_type(row), axis=1)
+    df_ = df_[~(df_['new_size'] == 0)]
+
+    ask_mean_size = df_[df_['side'] == 'ASK']['size'].mean()
+    bid_mean_size = df_[df_['side'] == 'BID']['size'].mean()
+
+    def _normalise(row):
+        if row['side'] == 'ASK':
+            return row['new_size'] / ask_mean_size
+        else:
+            return row['new_size'] / bid_mean_size
+
+    df_['norm_size'] = df_.apply(_normalise, axis=1)
+
+    return df_

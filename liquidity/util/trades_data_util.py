@@ -1,11 +1,29 @@
 import pandas as pd
 
-from liquidity.response_functions.price_response_functions import add_daily_features, aggregate_response_function
-from liquidity.util.data_util import normalise_imbalances, remove_midprice_orders
-from liquidity.response_functions.lob_data import select_trading_hours, select_top_book, select_columns, \
+from liquidity.response_functions.lob_data import load_l3_data, select_trading_hours, select_top_book, select_columns, \
     shift_prices
+from liquidity.response_functions.price_response_functions import unconditional_impact
+from liquidity.util.util import add_order_sign
 
-from liquidity.util.util import _remove_outliers
+
+def remove_midprice_trades(df_: pd.DataFrame) -> pd.DataFrame:
+    mask = df_['execution_price'] == df_['midprice']
+    return df_[~mask]
+
+
+def get_trades_impact(filepath: str, date: str):
+    data = load_l3_data(filepath)
+    df = select_trading_hours(date, data)
+    df = select_top_book(df)
+    df = select_columns(df)
+    df = shift_prices(df)
+    df = remove_midprice_trades(df)
+    df = add_order_sign(df)
+    ddf = select_executions(df)
+    ddf = aggregate_same_ts_events(ddf)
+    ddf = unconditional_impact(ddf)
+    ddf = normalise_trade_volume(ddf, data)
+    return ddf
 
 
 def select_executions(df_: pd.DataFrame) -> pd.DataFrame:
@@ -49,27 +67,3 @@ def normalise_trade_volume(df_: pd.DataFrame, lob_data: pd.DataFrame) -> pd.Data
 
     df_['norm_trade_volume'] = df_.apply(_normalise, axis=1)
     return df_
-
-
-def get_aggregate_trade_response_features(df_: pd.DataFrame,
-                                          T: int,
-                                          normalise: bool = True,
-                                          remove_outliers: bool = False,
-                                          log=False) -> pd.DataFrame:
-    data = df_.copy()
-    data = data.rename(columns={'execution_size': 'size', 'trade_sign': 'sign'})
-    data = add_daily_features(data)
-    data = aggregate_response_function(data, T=T, response_column=f'R{T}', log=log)
-    if remove_outliers:
-        data = _remove_outliers(data)
-    if normalise:
-        data = normalise_imbalances(data)
-    return data
-
-
-def clean_lob_data(date: str, df_raw: pd.DataFrame) -> pd.DataFrame:
-    df = select_trading_hours(date, df_raw)
-    df = select_top_book(df)
-    df = select_columns(df)
-    df = shift_prices(df)
-    return remove_midprice_orders(df)
