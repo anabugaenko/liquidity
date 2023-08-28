@@ -22,6 +22,18 @@ def add_daily_features(df_: pd.DataFrame, response_column: str = 'R1') -> pd.Dat
     return df_
 
 
+def individual_response_function(df_: pd.DataFrame, response_column: str = 'R1') -> pd.DataFrame:
+    """
+    Lag one price response of market orders defined as
+    difference in mid-price immediately before subsequent MO
+    and the mid-price immediately before the current MO
+    aligned by the original MO direction.
+    """
+    df_['midprice_change'] = df_['midprice'].diff().shift(-1).fillna(0)
+    df_[response_column] = df_['midprice_change'] * df_.index.get_level_values('sign')
+    return df_
+
+
 def aggregate_response_function(df_: pd.DataFrame, T: int, response_column: str, log=False) -> pd. DataFrame:
     """
     From a given timeseries of transactions  compute many lag price response
@@ -52,15 +64,3 @@ def aggregate_response_function(df_: pd.DataFrame, T: int, response_column: str,
     else:
         df_agg[response_column] = np.log(df_agg['midprice'].shift(-1).fillna(0)) - np.log(df_agg['midprice'])
     return df_agg
-
-
-def individual_response_function(df_: pd.DataFrame, response_column: str = 'R1') -> pd.DataFrame:
-    """
-    Lag one price response of market orders defined as
-    difference in mid-price immediately before subsequent MO
-    and the mid-price immediately before the current MO
-    aligned by the original MO direction.
-    """
-    df_['midprice_change'] = df_['midprice'].diff().shift(-1).fillna(0)
-    df_[response_column] = df_['midprice_change'] * df_.index.get_level_values('sign')
-    return df_

@@ -1,17 +1,12 @@
 import pandas as pd
 
-from liquidity.response_functions.price_response import add_daily_features, aggregate_response_function, \
+from liquidity.response_functions.price_response_functions import add_daily_features, aggregate_response_function, \
     individual_response_function
-from liquidity.util.data_util import normalise_imbalances
+from liquidity.util.data_util import normalise_imbalances, remove_midprice_orders
 from liquidity.response_functions.lob_data import load_l3_data, select_trading_hours, select_top_book, select_columns, \
     shift_prices
 
 from liquidity.util.util import add_order_sign, _remove_outliers
-
-
-def remove_midprice_trades(df_: pd.DataFrame) -> pd.DataFrame:
-    mask = df_['execution_price'] == df_['midprice']
-    return df_[~mask]
 
 
 def select_executions(df_: pd.DataFrame) -> pd.DataFrame:
@@ -63,7 +58,7 @@ def get_daily_trades_with_impact(filepath: str, date: str):
     df = select_top_book(df)
     df = select_columns(df)
     df = shift_prices(df)
-    df = remove_midprice_trades(df)
+    df = remove_midprice_orders(df)
     df = add_order_sign(df)
     ddf = select_executions(df)
     ddf = aggregate_same_ts_events(ddf)
@@ -93,4 +88,4 @@ def clean_lob_data(date: str, df_raw: pd.DataFrame) -> pd.DataFrame:
     df = select_top_book(df)
     df = select_columns(df)
     df = shift_prices(df)
-    return remove_midprice_trades(df)
+    return remove_midprice_orders(df)

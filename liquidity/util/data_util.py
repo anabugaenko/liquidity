@@ -199,3 +199,8 @@ def normalise_imbalances(df_: pd.DataFrame) -> pd. DataFrame:
     df_['sign_imbalance'] = df_['sign_imbalance'] / df_['daily_num'] * df_['daily_num'].mean()
 
     return df_
+
+
+def remove_midprice_orders(df_: pd.DataFrame) -> pd.DataFrame:
+    mask = df_['price'] == df_['midprice']
+    return df_[~mask]

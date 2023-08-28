@@ -2,14 +2,9 @@ import pandas as pd
 
 from liquidity.response_functions.lob_data import load_l3_data, select_trading_hours, select_top_book, select_columns, \
     shift_prices
-from liquidity.response_functions.price_response import add_daily_features, aggregate_response_function, individual_response_function
-from liquidity.util.data_util import normalise_imbalances
-from liquidity.util.util import numerate_side, _remove_outliers, add_order_sign
-
-
-def remove_midprice_orders(df_: pd.DataFrame) -> pd.DataFrame:
-    mask = df_['price'] == df_['midprice']
-    return df_[~mask]
+from liquidity.response_functions.price_response_functions import add_daily_features, aggregate_response_function, individual_response_function
+from liquidity.util.data_util import normalise_imbalances, remove_midprice_orders
+from liquidity.util.util import _remove_outliers, add_order_sign
 
 
 def select_lo_inserts(df_: pd.DataFrame) -> pd.DataFrame:
