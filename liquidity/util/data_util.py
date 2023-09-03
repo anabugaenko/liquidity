@@ -6,7 +6,6 @@ from scipy.stats import kendalltau, spearmanr
 
 from liquidity.util.lob_data import select_trading_hours, select_top_book, select_columns, \
     shift_prices
-from liquidity.util.limit_orders_data_util import remove_midprice_orders
 
 
 def set_row_groups(start: float, group_size: float, data: pd.DataFrame, column_name: str = 'norm_trade_volume') \
@@ -277,3 +276,13 @@ def normalise_all_sizes(df_: pd.DataFrame):
     df_['norm_size'] = df_.apply(_normalise, axis=1)
 
     return df_
+
+
+def rename_price_columns(df_: pd.DataFrame) -> pd.DataFrame:
+    df_ = df_.drop(['price', 'size'], axis=1)
+    return df_.rename(columns={'old_price': 'price', 'old_size': 'size'})
+
+
+def remove_midprice_orders(df_: pd.DataFrame) -> pd.DataFrame:
+    mask = df_['price'] == df_['midprice']
+    return df_[~mask]

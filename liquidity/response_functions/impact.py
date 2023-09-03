@@ -1,13 +1,8 @@
 import pandas as pd
 
 from liquidity.response_functions.price_response_functions import add_daily_features, aggregate_impact
-from liquidity.util.data_util import normalise_imbalances
+from liquidity.util.data_util import normalise_imbalances, rename_price_columns
 from liquidity.util.util import _remove_outliers
-
-
-def rename_price_columns(df_: pd.DataFrame) -> pd.DataFrame:
-    df_ = df_.drop(['price', 'size'], axis=1)
-    return df_.rename(columns={'old_price': 'price', 'old_size': 'size'})
 
 
 def rename_columns(df_: pd.DataFrame) -> pd.DataFrame:
