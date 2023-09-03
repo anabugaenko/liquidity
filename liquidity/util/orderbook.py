@@ -8,7 +8,7 @@ UCT_OFFSET = 2
 def load_l3_data(filepath: str) -> pd.DataFrame:
     """
     Returns DataFrame of daily incremental Level 3 order book data.
-    Example code below in a comment show how to load the data on BMLL platform.
+    Example code below shows how to load the data on BMLL platform.
     """
 
     """
@@ -166,4 +166,13 @@ def normalise_all_sizes(df_: pd.DataFrame):
 
     df_['norm_size'] = df_.apply(_normalise, axis=1)
 
+    return df_
+
+
+def numerate_side(row):
+    return 1 if row['side'] == 'ASK' else -1
+
+
+def add_order_sign(df_: pd.DataFrame) -> pd.DataFrame:
+    df_['sign'] = df_.apply(lambda row: numerate_side(row), axis=1)
     return df_

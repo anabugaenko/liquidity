@@ -1,27 +1,36 @@
 import pandas as pd
 
-from liquidity.response_functions.price_response_functions import add_daily_features, aggregate_impact
-from liquidity.util.data_util import _remove_outliers
+from liquidity.response_functions.price_response_functions import aggregate_impact
+from liquidity.util.data_util import _remove_outliers, rename_columns
 
 
-def rename_columns(df_: pd.DataFrame) -> pd.DataFrame:
-    df_columns = df_.columns
+def add_daily_features(df_: pd.DataFrame, response_column: str = 'R1') -> pd.DataFrame:
+    """
+    From a given time series of transactions add daily means of
+    lag one price response R1 and order size.
+    """
+    if type(df_['event_timestamp'].iloc[0]) != pd.Timestamp:
+        df_['event_timestamp'] = df_['event_timestamp'].apply(lambda x: pd.Timestamp(x))
+    df_['date'] = df_['event_timestamp'].apply(lambda x: x.date())
 
-    if 'old_price' in df_columns and 'old_size' in df_columns:
-        df_ = df_.drop(['price', 'size'], axis=1)
-        df_ = df_.rename(columns={'old_price': 'price', 'old_size': 'size'})
+    daily_R1 = df_[[response_column, 'date']].groupby('date').agg(daily_R1=(response_column, 'mean'))
+    daily_volume = df_[['size', 'date']].groupby('date').agg(daily_vol=('size', 'sum'))
+    daily_num = df_[['size', 'date']].groupby('date').agg(daily_num=('size', 'count'))
 
-    if 'R1_CA' in df_columns:
-        df_ = df_.rename(columns={'R1_CA': 'R1'})
+    df_['daily_R1'] = daily_R1.reindex(index=df_['event_timestamp'], method='ffill').values
+    df_['daily_vol'] = daily_volume.reindex(index=df_['event_timestamp'], method='ffill').values
+    df_['daily_num'] = daily_num.reindex(index=df_['event_timestamp'], method='ffill').values
 
-    if 'R1_LO' in df_columns:
-        df_ = df_.rename(columns={'R1_LO': 'R1'})
+    return df_
 
-    if 'execution_size' in df_columns:
-        df_ = df_.rename(columns={'execution_size': 'size'})
 
-    if 'trade_sign' in df_columns:
-        df_ = df_.rename(columns={'trade_sign': 'sign'})
+def normalise_imbalances(df_: pd.DataFrame) -> pd. DataFrame:
+    """
+    Normalise volume imbalance by mean daily order size relative to its average;
+    sign imbalance by mean daily number of orders.
+    """
+    df_['vol_imbalance'] = df_['vol_imbalance'] / df_['daily_vol'] * df_['daily_vol'].mean()
+    df_['sign_imbalance'] = df_['sign_imbalance'] / df_['daily_num'] * df_['daily_num'].mean()
 
     return df_
 
@@ -44,12 +53,4 @@ def get_aggregate_impact_series(df_: pd.DataFrame,
     return data
 
 
-def normalise_imbalances(df_: pd.DataFrame) -> pd. DataFrame:
-    """
-    Normalise volume imbalance by mean daily order size relative to its average;
-    sign imbalance by mean daily number of orders.
-    """
-    df_['vol_imbalance'] = df_['vol_imbalance'] / df_['daily_vol'] * df_['daily_vol'].mean()
-    df_['sign_imbalance'] = df_['sign_imbalance'] / df_['daily_num'] * df_['daily_num'].mean()
 
-    return df_

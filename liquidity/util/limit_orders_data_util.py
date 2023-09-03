@@ -1,11 +1,10 @@
 import pandas as pd
 
-from liquidity.util.data_util import remove_midprice_orders
-from liquidity.util.lob_data import load_l3_data, select_trading_hours, select_top_book, select_columns, \
-    shift_prices, select_best_quotes
+from liquidity.util.data_util import remove_midprice_orders, rename_columns
+from liquidity.util.orderbook import load_l3_data, select_trading_hours, select_top_book, select_columns, \
+    shift_prices, select_best_quotes, add_order_sign
 from liquidity.response_functions.price_response_functions import unconditional_impact
 from liquidity.util.trades_data_util import remove_midprice_trades
-from liquidity.util.util import add_order_sign
 
 
 def get_lo_impact(filepath: str, date: str) -> pd.DataFrame:
@@ -39,7 +38,7 @@ def get_ca_impact(filepath: str, date: str) -> pd.DataFrame:
     df = add_order_sign(df)
     df = select_cancellations(df)
     df = df.drop(['price', 'size'], axis=1)
-    df = df.rename(columns={'old_price': 'price', 'old_size': 'size'})
+    df = rename_columns(df)
     df = unconditional_impact(df, response_column='R1_CA')
     df = normalise_lo_sizes(df)
     return df
