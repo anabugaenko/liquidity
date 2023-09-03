@@ -1,15 +1,15 @@
 import pandas as pd
 
 from liquidity.response_functions.price_response_functions import add_daily_features, aggregate_impact
-from liquidity.util.data_util import normalise_imbalances, rename_price_columns
-from liquidity.util.util import _remove_outliers
+from liquidity.util.data_util import _remove_outliers
 
 
 def rename_columns(df_: pd.DataFrame) -> pd.DataFrame:
     df_columns = df_.columns
 
     if 'old_price' in df_columns and 'old_size' in df_columns:
-        df_ = rename_price_columns(df_)
+        df_ = df_.drop(['price', 'size'], axis=1)
+        df_ = df_.rename(columns={'old_price': 'price', 'old_size': 'size'})
 
     if 'R1_CA' in df_columns:
         df_ = df_.rename(columns={'R1_CA': 'R1'})
@@ -42,3 +42,14 @@ def get_aggregate_impact_series(df_: pd.DataFrame,
     if normalise:
         data = normalise_imbalances(data)
     return data
+
+
+def normalise_imbalances(df_: pd.DataFrame) -> pd. DataFrame:
+    """
+    Normalise volume imbalance by mean daily order size relative to its average;
+    sign imbalance by mean daily number of orders.
+    """
+    df_['vol_imbalance'] = df_['vol_imbalance'] / df_['daily_vol'] * df_['daily_vol'].mean()
+    df_['sign_imbalance'] = df_['sign_imbalance'] / df_['daily_num'] * df_['daily_num'].mean()
+
+    return df_

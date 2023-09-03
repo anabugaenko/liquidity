@@ -2,26 +2,10 @@ from matplotlib import pyplot as plt, pylab
 import matplotlib.font_manager as font_manager
 import numpy as np
 
-from liquidity.util.data_util import get_density_df
 from liquidity.util.plotting.constants import TSLA_COLORS, EBAY_COLORS, MSFT_COLORS, AMZN_COLORS, NFLX_COLORS
 
 plt.rcParams['text.usetex'] = True
 plt.rcParams['text.latex.preamble'] = [r'\usepackage{lmodern}']
-
-
-def plot_series_ccdf(series, series_name=None, q=50):
-    df = get_density_df(series, q=q)
-    plt.figure(figsize=(4, 4))
-    plt.plot(df.bin, df.value, marker='*', markevery=2, label='TSLA')
-
-    plt.legend(loc='best')
-
-    if series_name is not None:
-        plt.xlabel(series_name)
-    plt.ylabel("Cumulative density")
-
-    plt.yscale('log')
-    plt.xscale('log')
 
 
 def plot_returns_cdf(tsla, ebay, msft, amzn, nflx, exponent=None):

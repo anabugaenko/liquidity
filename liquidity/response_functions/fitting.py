@@ -142,6 +142,9 @@ def normalise_axis(df_: pd.DataFrame, imbalance_col='vol_imbalance') -> pd.DataF
 
 
 def bin_data_into_quantiles(df, x_col='vol_imbalance', y_col='R', q=100, duplicates='raise'):
+    """
+    3/9/23 This is majorly used.
+    """
     binned_x = pd.qcut(df[x_col], q=q, labels=False, retbins=True, duplicates=duplicates)
     binned_x = binned_x[0]
     df['x_bin'] = binned_x

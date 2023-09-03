@@ -1,8 +1,8 @@
 import pandas as pd
 
-from liquidity.util.data_util import rename_price_columns, remove_midprice_orders
+from liquidity.util.data_util import remove_midprice_orders
 from liquidity.util.lob_data import load_l3_data, select_trading_hours, select_top_book, select_columns, \
-    shift_prices
+    shift_prices, select_best_quotes
 from liquidity.response_functions.price_response_functions import unconditional_impact
 from liquidity.util.trades_data_util import remove_midprice_trades
 from liquidity.util.util import add_order_sign
@@ -38,7 +38,8 @@ def get_ca_impact(filepath: str, date: str) -> pd.DataFrame:
     df = remove_midprice_orders(df)
     df = add_order_sign(df)
     df = select_cancellations(df)
-    df = rename_price_columns(df)
+    df = df.drop(['price', 'size'], axis=1)
+    df = df.rename(columns={'old_price': 'price', 'old_size': 'size'})
     df = unconditional_impact(df, response_column='R1_CA')
     df = normalise_lo_sizes(df)
     return df
@@ -46,7 +47,7 @@ def get_ca_impact(filepath: str, date: str) -> pd.DataFrame:
 
 def get_qa_impact(raw_daily_df: pd.DataFrame, date: str) -> pd.DataFrame:
     df = select_trading_hours(date, raw_daily_df)
-    df = select_top_book(df)
+    df = select_best_quotes(df)
     df = select_columns(df)
     df = shift_prices(df)
     df = remove_midprice_orders(df)
