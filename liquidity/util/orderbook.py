@@ -1,6 +1,6 @@
 import pandas as pd
 
-from liquidity.util.data_util import remove_midprice_orders
+from liquidity.util.utils import remove_midprice_orders
 
 UCT_OFFSET = 2
 
@@ -95,14 +95,6 @@ def shift_prices(df_: pd.DataFrame) -> pd.DataFrame:
     return df_
 
 
-def clean_lob_data(date: str, df_raw: pd.DataFrame) -> pd.DataFrame:
-    df = select_trading_hours(date, df_raw)
-    df = select_top_book(df)
-    df = select_columns(df)
-    df = shift_prices(df)
-    return remove_midprice_orders(df)
-
-
 def select_best_quotes(df: pd.DataFrame) -> pd.DataFrame:
     """
     Need to carefully select only events that affected top book level.
@@ -112,6 +104,14 @@ def select_best_quotes(df: pd.DataFrame) -> pd.DataFrame:
     price_level_mask = (df.price_level == 1) | (df.price_level == 0)
     old_price_level_mask = (df.old_price_level == 1) | (df.old_price_level == 0)
     return df[price_level_mask & old_price_level_mask]
+
+
+def clean_lob_data(date: str, df_raw: pd.DataFrame) -> pd.DataFrame:
+    df = select_trading_hours(date, df_raw)
+    df = select_top_book(df)
+    df = select_columns(df)
+    df = shift_prices(df)
+    return remove_midprice_orders(df)
 
 
 def normalise_all_sizes(df_: pd.DataFrame):
@@ -166,13 +166,4 @@ def normalise_all_sizes(df_: pd.DataFrame):
 
     df_['norm_size'] = df_.apply(_normalise, axis=1)
 
-    return df_
-
-
-def numerate_side(row):
-    return 1 if row['side'] == 'ASK' else -1
-
-
-def add_order_sign(df_: pd.DataFrame) -> pd.DataFrame:
-    df_['sign'] = df_.apply(lambda row: numerate_side(row), axis=1)
     return df_

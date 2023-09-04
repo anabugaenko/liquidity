@@ -1,7 +1,7 @@
 import pandas as pd
 
 from liquidity.response_functions.price_response_functions import aggregate_impact
-from liquidity.util.data_util import _remove_outliers, rename_columns
+from liquidity.util.utils import smooth_outliers, rename_columns
 
 
 def add_daily_features(df_: pd.DataFrame, response_column: str = 'R1') -> pd.DataFrame:
@@ -47,10 +47,10 @@ def get_aggregate_impact_series(df_: pd.DataFrame,
     data = add_daily_features(data)
     data = aggregate_impact(data, T=T, response_column=f'R{T}', log=log)
     if remove_outliers:
-        data = _remove_outliers(data)
+        data = smooth_outliers(data)
     if normalise:
         data = normalise_imbalances(data)
     return data
 
-
+# TODO: get individual impact.
 

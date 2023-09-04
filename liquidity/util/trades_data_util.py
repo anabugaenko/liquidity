@@ -1,7 +1,8 @@
 import pandas as pd
 
 from liquidity.util.orderbook import load_l3_data, select_trading_hours, select_top_book, select_columns, \
-    shift_prices, add_order_sign
+    shift_prices
+from liquidity.util.utils import add_order_signs
 from liquidity.response_functions.price_response_functions import unconditional_impact
 
 
@@ -17,7 +18,7 @@ def get_trades_impact(filepath: str, date: str):
     df = select_columns(df)
     df = shift_prices(df)
     df = remove_midprice_trades(df)
-    df = add_order_sign(df)
+    df = add_order_signs(df)
     ddf = select_executions(df)
     ddf = aggregate_same_ts_events(ddf)
     ddf = unconditional_impact(ddf)

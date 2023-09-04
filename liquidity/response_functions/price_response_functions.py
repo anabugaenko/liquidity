@@ -16,7 +16,7 @@ def unconditional_impact(df_: pd.DataFrame, response_column: str = 'R1') -> pd.D
 
 # TODO:
 """
-Add response function R(L), R(v, 1) (where we also condition on R(epsilon, 1))
+Add response function R(L), R(v, 1) (where we also condition on R(epsilon, 1), price changign and none price changing)
 """
 
 
