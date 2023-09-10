@@ -2,30 +2,25 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit
 
-from liquidity.response_functions.impact import get_aggregate_impact_series
+from liquidity.response_functions.price_response_functions import compute_conditional_aggregate_impact
 
 
-def scale_function(x, alpha, beta):
+def scaling_function(x: float, alpha: float, beta: float) -> float:
     """
-    Scaling function #1
-    Two parameters
+    Define the sigmoidal function F(x) as mentioned in the paper.
 
-    Parameters
-    ----------
-    x : np.array()
-        x-axis data
-    alpha: float
-        small x growth power
-    beta: float
-        large x growth power
+    Parameters:
+    - x (float): The value for which we are calculating the function.
+    - alpha (float): Represents the small x growth power.
+    - beta (float): Represents the large x growth power.
 
-    Returns: np.array() with the same shape as x
-    ----------
+    Returns:
+    - float: The result of the scale function for given x, alpha, and beta.
     """
-    return x / np.power(1 + np.power(abs(x), alpha), beta /alpha)
+    return x / (1 + abs(x) ** alpha) ** (beta / alpha)
 
 
-def agg_impact_fit_func(qT, chi, kappa, alpha, beta, gamma):
+def scaling_form(qT, chi, kappa, alpha, beta, gamma):
     """
     Function used for optimization #1
 
@@ -51,17 +46,17 @@ def agg_impact_fit_func(qT, chi, kappa, alpha, beta, gamma):
     q = qT[0]
     T = qT[1]
     x = q / np.power(T, kappa)
-    return np.power(T, chi) * scale_function(x, alpha, beta) * gamma
+    return np.power(T, chi) * scaling_function(x, alpha, beta) * gamma
 
 
-def agg_impact_fit_func_y_reflect(qT, chi, kappa, alpha, beta, gamma):
+def scaling_form_reflect(qT, chi, kappa, alpha, beta, gamma):
     """
     Inverse (on y axis) sigmoid.
     """
     q = qT[0]
     T = qT[1]
     x = - q / np.power(T, kappa)
-    return np.power(T, chi) * scale_function(x, alpha, beta) * gamma
+    return np.power(T, chi) * scaling_function(x, alpha, beta) * gamma
 
 
 def transform_results_df(df_, T, imbalance_col='vol_imbalance'):
@@ -76,7 +71,7 @@ def transform_results_df(df_, T, imbalance_col='vol_imbalance'):
 def prepare_data_for_fitting(df_, durations, imbalance_col='vol_imbalance'):
     results_ = []
     for i in range(len(durations)):
-        result = get_aggregate_impact_series(df_, T=durations[i])
+        result = compute_conditional_aggregate_impact(df_, T=durations[i])
         results_.append(transform_results_df(result, durations[i], imbalance_col=imbalance_col))
 
     return pd.concat(results_)
@@ -85,14 +80,14 @@ def prepare_data_for_fitting(df_, durations, imbalance_col='vol_imbalance'):
 def prepare_lo_data_for_fitting(df_, durations, imbalance_col='vol_imbalance'):
     results_ = []
     for i in range(len(durations)):
-        result = get_aggregate_impact_series(df_, T=durations[i])
+        result = compute_conditional_aggregate_impact(df_, T=durations[i])
         results_.append(transform_results_df(result, durations[i], imbalance_col=imbalance_col))
 
     return pd.concat(results_)
 
 
 def get_fit_params(data_all, y_reflect=False, f_scale=0.2, verbose=False):
-    fit_func = agg_impact_fit_func if not y_reflect else agg_impact_fit_func_y_reflect
+    fit_func = scaling_form if not y_reflect else scaling_form_reflect
 
     try:
         popt, pcov = curve_fit(fit_func, np.transpose(data_all.iloc[:, :2].to_numpy()),
@@ -111,7 +106,7 @@ def get_fit_params(data_all, y_reflect=False, f_scale=0.2, verbose=False):
 
 def fit_scale_function(df, x_col='vol_imbalance', y_col='R', y_reflect=False, verbose=False):
     x_values = -df[x_col].values if y_reflect else df[x_col].values
-    popt, pcov = curve_fit(scale_function, x_values,
+    popt, pcov = curve_fit(scaling_function, x_values,
                            df[y_col].values,
                            bounds=(0, np.inf), loss='soft_l1')
 
@@ -119,7 +114,7 @@ def fit_scale_function(df, x_col='vol_imbalance', y_col='R', y_reflect=False, ve
         print(f'parameters found: {popt}')
         print(f'standard deviations: {np.sqrt(np.diag(pcov))} \n')
 
-    return popt, pcov, scale_function
+    return popt, pcov, scaling_function
 
 
 def rescale_data(df: pd.DataFrame, popt, imbalance_col='vol_imbalance') -> pd.DataFrame:
@@ -167,7 +162,7 @@ def bin_data_into_quantiles(df, x_col='vol_imbalance', y_col='R', q=100, duplica
 def get_agg_features(df: pd.DataFrame, durations):
     results_ = []
     for i, T in enumerate(durations):
-        lag_data = get_aggregate_impact_series(df, T=T)
+        lag_data = compute_conditional_aggregate_impact(df, T=T)
         lag_data['R'] = lag_data[f'R{T}']
         lag_data = lag_data.drop(columns=f'R{T}')
         lag_data['T']= T

@@ -6,7 +6,7 @@ from matplotlib import rc
 import matplotlib.font_manager as font_manager
 import pylab
 
-from liquidity.response_functions.fitting import scale_function
+from liquidity.response_functions.fitting import scaling_function
 from liquidity.util.plotting.util import get_data_for_plotting
 
 
@@ -91,14 +91,14 @@ def plot_fitted_model_with_data(data_binned: pd.DataFrame, durations,
                       markeredgecolor=color_markers, ms=5, alpha=alpha, linewidth=1)
     ax.grid(False)
     if not y_reflect:
-        plt.plot(q, scale_function(q, popt[2], popt[3]) * popt[-1],
+        plt.plot(q, scaling_function(q, popt[2], popt[3]) * popt[-1],
                  '--',
                  color=color_fitted_line,
                  linewidth=1,
                  # label=r"$\mathbb{R}(\Delta V, T)$"
                  )
     else:
-        plt.plot(q, scale_function(-q, popt[2], popt[3]) * popt[-1],
+        plt.plot(q, scaling_function(-q, popt[2], popt[3]) * popt[-1],
                  '--',
                  color=color_fitted_line,
                  linewidth=1.9,
@@ -258,7 +258,7 @@ def plot_collapsed_fitted_func(fit_param,
                          linewidth=0.5, markeredgewidth=0.5)
 
     if master_curve is not None:
-        plt.plot(q, scale_function(-q, master_curve[2], master_curve[3]) * master_curve[-1],
+        plt.plot(q, scaling_function(-q, master_curve[2], master_curve[3]) * master_curve[-1],
                  '-', linewidth=1, color='black')
 
     if renorm:
