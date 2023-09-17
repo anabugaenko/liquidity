@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit
 
+from liquidity.util.fitting_util import get_agg_features, bin_data_into_quantiles
+from typing import List
 
 def scaling_function(x: float, alpha: float, beta: float) -> float:
     """
@@ -107,3 +109,51 @@ def normalise_axis(df_: pd.DataFrame, imbalance_col='vol_imbalance') -> pd.DataF
     return df
 
 
+def compute_scaling_exponents(df: pd.DataFrame, durations: List = [5, 10, 20, 50, 100]):
+    data = get_agg_features(df, durations)
+    data_norm = normalise_axis(data)
+    binned_data = []
+
+    for T in durations:
+        result = data_norm[data_norm['T'] == T][['vol_imbalance', 'T', 'R']]
+        binned_data.append(bin_data_into_quantiles(result))
+    binned_result = pd.concat(binned_data)
+    popt, pcov, fit_func = fit_scaling_form(binned_result)
+
+    return popt, pcov, fit_func, data_norm
+
+
+class FitResult:
+    T: int
+    params: List
+    data: pd.DataFrame
+
+    def __init__(self, T, params, data):
+        self.T = T
+        self.params = params
+        self.data = data
+
+
+def renormalise(df: pd.DataFrame, params, durations: List = [5, 10, 20, 50, 100]):
+    chi, kappa, alpha, beta, gamma = params
+    fit_param = {}
+    for T in durations:
+        result = df[df['T'] == T][['vol_imbalance', 'T', 'R']]
+
+        result['vol_imbalance'] = result['vol_imbalance'] / T ** kappa
+        result['R'] = result['R'] / T ** chi
+
+        binned_result = bin_data_into_quantiles(result, q=100)
+        param = fit_scaling_form(binned_result)
+        if param[0] is None:
+            # FIXME: add dynamic adjusting for less samples at higher durations
+            print('re-trying')
+            binned_result = bin_data_into_quantiles(result, q=31)
+            param = fit_scaling_form(binned_result)
+
+        if param[0] is not None:
+            fit_param[T] = FitResult(T, param, binned_result)
+        else:
+            print(f'Failed to fit for lag {T}')
+
+    return fit_param

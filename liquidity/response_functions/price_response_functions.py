@@ -6,8 +6,8 @@ from liquidity.util.utils import rename_columns, smooth_outliers
 
 def _price_response_function(df_: pd.DataFrame, lag: int = 1, log_prices=False) -> pd.DataFrame:
 
-    # TODO: test this
     """
+    aka R(l)
     Lag one price response of market orders defined as
     difference in mid-price immediately before subsequent MO
     and the mid-price immediately before the current MO
@@ -29,10 +29,13 @@ def _price_response_function(df_: pd.DataFrame, lag: int = 1, log_prices=False) 
 
 def _conditional_aggregate_impact(df_: pd.DataFrame, T: int, response_column: str, log_prices=False) -> pd. DataFrame:
     """
+
+    At the moment assumes conditioning on sign dependent variable
+
     From a given timeseries of transactions  compute many lag price response
     (T specifies number of lags).
 
-    TODO: Implement price changign and none price changing flag for R(v, 1) and R(epsilon, 1),
+    TODO: Implement price changing and none price changing flag for R(v, 1) and R(epsilon, 1),
 
     """
 
@@ -55,7 +58,7 @@ def _conditional_aggregate_impact(df_: pd.DataFrame, T: int, response_column: st
         # price_changing=('price_changing', 'first')
     )
     if not log_prices:
-        df_agg[response_column] = df_agg['midprice'].diff().shift(-1).fillna(0)
+        df_agg[response_column] = df_agg['midprice'].diff().shift(-1).fillna(0)  # FIXME: excludes the sign atm
     else:
         df_agg[response_column] = np.log(df_agg['midprice'].shift(-1).fillna(0)) - np.log(df_agg['midprice'])
     return df_agg
@@ -99,6 +102,10 @@ def normalise_price_response(df: pd.DataFrame, response_column: str) -> pd.DataF
 
 def compute_price_response(df: pd.DataFrame, lag: int = 1,  normalise: bool = False,
                            remove_outliers: bool = False, log_prices=False) -> pd.DataFrame:
+    """
+    R(l)
+    Called when fitting.
+    """
     data = df.copy()
     if type(data['event_timestamp'].iloc[0]) != pd.Timestamp:
         data['event_timestamp'] = data['event_timestamp'].apply(lambda x: pd.Timestamp(x))
@@ -117,6 +124,9 @@ def compute_conditional_aggregate_impact(df: pd.DataFrame,
                                          normalise: bool = True,
                                          remove_outliers: bool = False,
                                          log_prices=False) -> pd.DataFrame:
+    """
+    Called when fitting.
+    """
     # TODO: Implement compute_individual_impact: condition on previous sign and volume
     data = df.copy()
     if type(data['event_timestamp'].iloc[0]) != pd.Timestamp:
