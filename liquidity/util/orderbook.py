@@ -31,15 +31,15 @@ def select_trading_hours(date: str, df_: pd.DataFrame, utc: bool = False) -> pd.
     """
     if utc:
         utc_offset = UCT_OFFSET
-        dt = pd.Timedelta(utc_offset, unit='m')
+        dt = pd.Timedelta(utc_offset, unit="m")
     else:
-        dt = pd.Timedelta(0, unit='m')
-    ts1 = pd.Timestamp(date + ' 10:30') - dt
-    ts2 = pd.Timestamp(date + ' 15:00') - dt
-    df_['event_timestamp'] = df_['event_timestamp'].apply(lambda x: pd.Timestamp(x))
-    mask = (df_['event_timestamp'].between(ts1, ts2))
+        dt = pd.Timedelta(0, unit="m")
+    ts1 = pd.Timestamp(date + " 10:30") - dt
+    ts2 = pd.Timestamp(date + " 15:00") - dt
+    df_["event_timestamp"] = df_["event_timestamp"].apply(lambda x: pd.Timestamp(x))
+    mask = df_["event_timestamp"].between(ts1, ts2)
     df_ = df_[mask]
-    df_['event_timestamp'] = df_['event_timestamp'] + dt
+    df_["event_timestamp"] = df_["event_timestamp"] + dt
     return df_
 
 
@@ -61,22 +61,41 @@ def select_columns(df_: pd.DataFrame) -> pd.DataFrame:
     Select only relevant info about each event.
     """
     sub_columns_list = [
-        'event_timestamp', 'side', 'lob_action',
-        'order_executed', 'execution_price', 'execution_size',
-        'best_ask_price', 'best_ask_size',
-        'best_bid_price', 'best_bid_size',
-        'is_new_best_price', 'price', 'price_level',
-        'old_price', 'old_price_level',
-        'size', 'old_size',
-        'best_ask_num_orders', 'best_bid_num_orders']
+        "event_timestamp",
+        "side",
+        "lob_action",
+        "order_executed",
+        "execution_price",
+        "execution_size",
+        "best_ask_price",
+        "best_ask_size",
+        "best_bid_price",
+        "best_bid_size",
+        "is_new_best_price",
+        "price",
+        "price_level",
+        "old_price",
+        "old_price_level",
+        "size",
+        "old_size",
+        "best_ask_num_orders",
+        "best_bid_num_orders",
+    ]
 
     df_ = df_[sub_columns_list]
-    df_ = df_.rename(columns={'best_ask_price': 'ask', 'best_bid_price': 'bid',
-                              'best_ask_size': 'ask_volume', 'best_bid_size': 'bid_volume',
-                              'best_ask_num_orders': 'ask_count', 'best_bid_num_orders': 'bid_count',
-                              'is_new_best_price': 'price_changing'})
+    df_ = df_.rename(
+        columns={
+            "best_ask_price": "ask",
+            "best_bid_price": "bid",
+            "best_ask_size": "ask_volume",
+            "best_bid_size": "bid_volume",
+            "best_ask_num_orders": "ask_count",
+            "best_bid_num_orders": "bid_count",
+            "is_new_best_price": "price_changing",
+        }
+    )
 
-    df_['midprice'] = (df_['ask'] + df_['bid']) * 0.5
+    df_["midprice"] = (df_["ask"] + df_["bid"]) * 0.5
     return df_
 
 
@@ -87,11 +106,11 @@ def shift_prices(df_: pd.DataFrame) -> pd.DataFrame:
     We're interested in how the price changed so shifting it to get values of
     mid-price, bid and ask immediately before each event.
     """
-    df_['midprice'] = df_['midprice'].shift().fillna(0)
-    df_['ask'] = df_['ask'].shift().fillna(0)
-    df_['bid'] = df_['bid'].shift().fillna(0)
-    df_['ask_volume'] = df_['ask_volume'].shift().fillna(0)
-    df_['bid_volume'] = df_['bid_volume'].shift().fillna(0)
+    df_["midprice"] = df_["midprice"].shift().fillna(0)
+    df_["ask"] = df_["ask"].shift().fillna(0)
+    df_["bid"] = df_["bid"].shift().fillna(0)
+    df_["ask_volume"] = df_["ask_volume"].shift().fillna(0)
+    df_["bid_volume"] = df_["bid_volume"].shift().fillna(0)
     return df_
 
 
@@ -122,48 +141,48 @@ def normalise_all_sizes(df_: pd.DataFrame):
     """
 
     def _select_size_for_order_type(row):
-        mask1 = row['lob_action'] == 'INSERT'
-        mask2 = row['lob_action'] == 'UPDATE'
-        mask2 = mask2 & (row['price_changing'] == True)
+        mask1 = row["lob_action"] == "INSERT"
+        mask2 = row["lob_action"] == "UPDATE"
+        mask2 = mask2 & (row["price_changing"] == True)
         lo_mask = mask1 | mask2
 
         if lo_mask:
-            return row['size']
+            return row["size"]
 
-        mo_mask = row['order_executed']
+        mo_mask = row["order_executed"]
 
         if mo_mask:
-            return row['execution_size']
+            return row["execution_size"]
 
-        mask1 = row['lob_action'] == 'REMOVE'
-        mask2 = row['order_executed'] == False
-        mask3 = row['old_price_level'] == 1
+        mask1 = row["lob_action"] == "REMOVE"
+        mask2 = row["order_executed"] == False
+        mask3 = row["old_price_level"] == 1
         mask_complete_removals = mask1 & mask2 & mask3
 
-        mask4 = row['lob_action'] == 'UPDATE'
-        mask5 = row['order_executed'] == False
-        mask6 = row['old_price_level'] == 1
-        mask7 = row['size'] < row['old_size']
+        mask4 = row["lob_action"] == "UPDATE"
+        mask5 = row["order_executed"] == False
+        mask6 = row["old_price_level"] == 1
+        mask7 = row["size"] < row["old_size"]
         mask_partial_removals = mask4 & mask5 & mask6 & mask7
         ca_mask = mask_complete_removals | mask_partial_removals
 
         if ca_mask:
-            return row['old_size']
+            return row["old_size"]
 
         return 0
 
-    df_['new_size'] = df_.apply(lambda row: _select_size_for_order_type(row), axis=1)
-    df_ = df_[~(df_['new_size'] == 0)]
+    df_["new_size"] = df_.apply(lambda row: _select_size_for_order_type(row), axis=1)
+    df_ = df_[~(df_["new_size"] == 0)]
 
-    ask_mean_size = df_[df_['side'] == 'ASK']['size'].mean()
-    bid_mean_size = df_[df_['side'] == 'BID']['size'].mean()
+    ask_mean_size = df_[df_["side"] == "ASK"]["size"].mean()
+    bid_mean_size = df_[df_["side"] == "BID"]["size"].mean()
 
     def _normalise(row):
-        if row['side'] == 'ASK':
-            return row['new_size'] / ask_mean_size
+        if row["side"] == "ASK":
+            return row["new_size"] / ask_mean_size
         else:
-            return row['new_size'] / bid_mean_size
+            return row["new_size"] / bid_mean_size
 
-    df_['norm_size'] = df_.apply(_normalise, axis=1)
+    df_["norm_size"] = df_.apply(_normalise, axis=1)
 
     return df_

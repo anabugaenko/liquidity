@@ -13,7 +13,17 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/anabugaenko/liquidity",
-    install_requires=['scipy', 'numpy', 'pandas', 'typing', 'statsmodels', 'matplotlib',  'powerlaw', 'hurst_exponent', 'powerlaw_function'],
+    install_requires=[
+        "scipy",
+        "numpy",
+        "pandas",
+        "typing",
+        "statsmodels",
+        "matplotlib",
+        "powerlaw",
+        "hurst_exponent",
+        "powerlaw_function",
+    ],
     keywords="liquidity price-impact order-flow-imbalance",
     packages=setuptools.find_packages(),
     classifiers=[
@@ -21,6 +31,6 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Topic :: Scientific/Engineering :: Mathematics",
-        "Intended Audience :: Science/Research"
-    ]
+        "Intended Audience :: Science/Research",
+    ],
 )

@@ -6,7 +6,7 @@ from scipy.stats import spearmanr, kendalltau
 
 
 class CustomSeries(pd.Series):
-    def nonlinear_autocorr(self, lag: int = 1, method: str = 'spearman') -> float:
+    def nonlinear_autocorr(self, lag: int = 1, method: str = "spearman") -> float:
         """
         Compute the lag-N autocorrelation using Kendall's Tau or Spearman rank correlation.
 
@@ -38,11 +38,11 @@ class CustomSeries(pd.Series):
         If the selected correlation method is not well defined return 'NaN'.
         """
         shifted_self = self.shift(lag)
-        valid_indices = (~np.isnan(self) & ~np.isnan(shifted_self))
+        valid_indices = ~np.isnan(self) & ~np.isnan(shifted_self)
 
-        if method.lower() == 'spearman':
+        if method.lower() == "spearman":
             return spearmanr(self[valid_indices], shifted_self[valid_indices])[0]
-        elif method.lower() == 'kendall':
+        elif method.lower() == "kendall":
             return kendalltau(self[valid_indices], shifted_self[valid_indices])[0]
         else:
             raise ValueError("Invalid method. Choose either 'spearman' or 'kendall'.")
@@ -60,11 +60,11 @@ def get_series_acf(series: pd.Series, lags: int) -> List:
 
 
 def get_nonlinear_acf(series: pd.Series, lags: int, method: str) -> List:
-        """
-        Returns a list of autocorrelation values for each of the lags from 0 to `lags`
-        """
-        acl_ = []
-        for i in range(lags):
-            ac = CustomSeries(series).nonlinear_autocorr(lag=i, method=method)
-            acl_.append(ac)
-        return acl_
+    """
+    Returns a list of autocorrelation values for each of the lags from 0 to `lags`
+    """
+    acl_ = []
+    for i in range(lags):
+        ac = CustomSeries(series).nonlinear_autocorr(lag=i, method=method)
+        acl_.append(ac)
+    return acl_

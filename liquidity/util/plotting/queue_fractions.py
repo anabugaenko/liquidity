@@ -3,15 +3,15 @@ import numpy as np
 
 
 def calculate_v_over_vbest(row):
-    if row['side'] == 'ASK':
-        return row['size'] / row['ask_volume']
+    if row["side"] == "ASK":
+        return row["size"] / row["ask_volume"]
     else:
-        return row['size'] / row['bid_volume']
+        return row["size"] / row["bid_volume"]
 
 
 def remove_empty_queue(df):
-    mask = df['ask_volume'] == 0.
-    mask = mask & (df['bid_volume'] == 0.)
+    mask = df["ask_volume"] == 0.0
+    mask = mask & (df["bid_volume"] == 0.0)
     return df[~mask]
 
 
@@ -37,6 +37,6 @@ def get_v_over_vbest_distribution(df, stock, n=100):
     bins, values = get_bins_and_values(series, n=n)
 
     df_ = pd.DataFrame(bins, values).reset_index()
-    df_.columns = ['value', 'bin']
-    df_['style'] = stock
+    df_.columns = ["value", "bin"]
+    df_["style"] = stock
     return df_

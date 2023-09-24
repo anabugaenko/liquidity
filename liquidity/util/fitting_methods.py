@@ -1,36 +1,15 @@
 import warnings
 import numpy as np
-from scipy import stats
 from scipy.optimize import minimize
 from scipy.optimize import least_squares
-from typing import List, Tuple, Callable, Union, Tuple
+from typing import List, Callable, Union, Tuple
+
+from liquidity.util.goodness_of_fit import loglikelihoods
 
 
-def loglikelihoods(data: List[float]) -> List[float]:
-    """
-    Compute the log likelihood of the data, hence  incorporates the variance of the data and assumes a certain distribution
-    (i.e., normal); -0.5 * np.log(2 * np.pi * np.std(data) ** 2) - (data ** 2) / (2 * np.std(data) ** 2).
-
-    TODO: Make chosen distribution adaptive/ dynamic as per issue #10 as loc (the mean) greatly impacts fitted results.
-
-    Parameters:
-    data (List[float]): The data for which the log likelihood is to be computed.
-
-    Returns:
-    float: The log likelihoods of the data.
-
-    """
-    # Compute the standard deviation of the data as an initial parameter
-    data_std = np.std(data)
-
-    # Compute the log probability density function of the data
-    loglikelihoods = stats.norm.logpdf(data, loc=0, scale=data_std)
-
-    return loglikelihoods
-
-
-def mle_fit(x_values: List[float], y_values: List[float], function: Callable) -> Union[
-    None, Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+def mle_fit(
+    x_values: List[float], y_values: List[float], function: Callable
+) -> Union[None, Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     """
     Fits a function or curve to the data using the maximum likelihood estimation (MLE) method.
 
@@ -59,7 +38,7 @@ def mle_fit(x_values: List[float], y_values: List[float], function: Callable) ->
     try:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            result = minimize(_negative_loglikelihood, initial_guess, args=(x_values, y_values), method='Nelder-Mead')
+            result = minimize(_negative_loglikelihood, initial_guess, args=(x_values, y_values), method="Nelder-Mead")
             params = result.x
 
         fitted_values = function(x_values, *params)
@@ -70,7 +49,9 @@ def mle_fit(x_values: List[float], y_values: List[float], function: Callable) ->
         return None
 
 
-def least_squares_fit(x_values: List[float], y_values: List[float], function: Callable) -> Union[None, Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+def least_squares_fit(
+    x_values: List[float], y_values: List[float], function: Callable
+) -> Union[None, Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     """
     Fits a function or curve to the data using the least squares method.
 
@@ -95,7 +76,7 @@ def least_squares_fit(x_values: List[float], y_values: List[float], function: Ca
     try:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            result = least_squares(_residuals, initial_guess, args=(x_values, y_values), loss='soft_l1')
+            result = least_squares(_residuals, initial_guess, args=(x_values, y_values), loss="soft_l1")
             params = result.x
 
         fitted_values = function(x_values, *params)

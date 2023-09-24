@@ -15,10 +15,9 @@ def get_data_for_plotting(qmax, durations):
     return q, T_mat
 
 
-def _custom_downsample_acf(acf: pd.DataFrame, max_lag: int, bin_size=30, q=100,
-                           drop_negative=False):
+def _custom_downsample_acf(acf: pd.DataFrame, max_lag: int, bin_size=30, q=100, drop_negative=False):
     df_ = pd.DataFrame(range(max_lag), acf).reset_index()
-    df_.columns = ['acf', 'lag']
+    df_.columns = ["acf", "lag"]
 
     if drop_negative:
         df_ = df_[df_.acf > 0].reset_index(drop=True)
