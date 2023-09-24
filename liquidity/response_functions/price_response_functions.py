@@ -81,19 +81,18 @@ def add_daily_features(df_: pd.DataFrame, response_column: str = "R1") -> pd.Dat
     return df_
 
 
-def normalise_imbalances(df_: pd.DataFrame) -> pd.DataFrame:
-    """
-    Normalise volume imbalance by mean daily order size relative to its average;
-    sign imbalance by mean daily number of orders.
-    """
-    df_["vol_imbalance"] = df_["vol_imbalance"] / df_["daily_vol"] * df_["daily_vol"].mean()
-    df_["sign_imbalance"] = df_["sign_imbalance"] / df_["daily_num"] * df_["daily_num"].mean()
-
-    return df_
-
-
 def normalise_price_response(df: pd.DataFrame, response_column: str) -> pd.DataFrame:
     df[response_column] = df[response_column] / df["daily_R1"] * df["daily_R1"].mean()
+    return df
+
+
+def normalise_axis(df: pd.DataFrame) -> pd.DataFrame:
+    if "vol_imbalance" in df.columns:
+        df["vol_imbalance"] = df["vol_imbalance"] / df["daily_vol"]
+    if "sign_imbalance" in df.columns:
+        df["sign_imbalance"] = df["sign_imbalance"] / df["daily_num"]
+    if "R" in df.columns:
+        df["R"] = df["R"] / df["daily_R1"]
     return df
 
 
@@ -118,7 +117,7 @@ def compute_price_response(
 
 
 def compute_conditional_aggregate_impact(
-    df: pd.DataFrame, T: int, normalise: bool = True, remove_outliers: bool = False, log_prices=False
+    df: pd.DataFrame, T: int, normalise: bool = True, remove_outliers: bool = True, log_prices=False
 ) -> pd.DataFrame:
     """
     Called when fitting.
@@ -130,8 +129,10 @@ def compute_conditional_aggregate_impact(
     data = rename_columns(data)
     data = add_daily_features(data)
     data = _conditional_aggregate_impact(data, T=T, response_column=f"R{T}", log_prices=log_prices)
-    if remove_outliers:
-        data = smooth_outliers(data)
+
     if normalise:
-        data = normalise_imbalances(data)
+        data = normalise_axis(data)
+
+    if remove_outliers:
+        data = smooth_outliers(data, T=T)
     return data

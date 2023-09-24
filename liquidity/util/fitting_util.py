@@ -32,7 +32,7 @@ def get_agg_features(df: pd.DataFrame, durations: List[int]) -> pd.DataFrame:
     df["date"] = df["event_timestamp"].apply(lambda x: x.date())
     results_ = []
     for i, T in enumerate(durations):
-        lag_data = compute_conditional_aggregate_impact(df, T=T)
+        lag_data = compute_conditional_aggregate_impact(df, T=T, normalise=True)
         lag_data["R"] = lag_data[f"R{T}"]
         lag_data = lag_data.drop(columns=f"R{T}")
         lag_data["T"] = T

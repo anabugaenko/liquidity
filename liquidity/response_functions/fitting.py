@@ -53,6 +53,7 @@ def scaling_form(orderflow_imbalance, chi, kappa, alpha, beta, gamma):
 def scaling_form_reflect(orderflow_imbalance, chi, kappa, alpha, beta, gamma):
     """
     Inverse (on y axis) sigmoid.
+    TODO: fix gamma
     """
     imbalance = orderflow_imbalance[0]
     T = orderflow_imbalance[1]
@@ -67,7 +68,7 @@ def fit_scaling_form(data_all, y_reflect=False, f_scale=0.2, verbose=False):
         # popt, pcov = curve_fit(fit_func, np.transpose(data_all.iloc[:, :2].to_numpy()),
         #                        data_all.iloc[:, 2].to_numpy(),
         #                        bounds=(0, np.inf), loss='soft_l1', f_scale=f_scale)
-        initial_guess = [0.5, 0.8, 1.0, 1.0, 1.0]
+        initial_guess = [0.5, 0.5, 1.0, 1.0, 1.0]
         popt, pcov = curve_fit(
             fit_func,
             np.transpose(data_all.iloc[:, :2].to_numpy()),
@@ -106,20 +107,8 @@ def rescale_data(df: pd.DataFrame, popt, imbalance_col="vol_imbalance") -> pd.Da
     return df
 
 
-def normalise_axis(df_: pd.DataFrame, imbalance_col="vol_imbalance") -> pd.DataFrame:
-    df = df_.copy()
-    if imbalance_col == "vol_imbalance":
-        df["vol_imbalance"] = df["vol_imbalance"] / df["daily_vol"]
-    else:
-        df["sign_imbalance"] = df["sign_imbalance"] / df["daily_num"]
-    df["R"] = df["R"] / abs(df["daily_R1"])
-
-    return df
-
-
-def compute_scaling_exponents(df: pd.DataFrame, durations: List = [5, 10, 20, 50, 100]):
-    data = get_agg_features(df, durations)
-    data_norm = normalise_axis(data)
+def zz_compute_scaling_exponents(df: pd.DataFrame, durations: List = [5, 10, 20, 50, 100]):
+    data_norm = get_agg_features(df, durations)
     binned_data = []
 
     for T in durations:
@@ -127,6 +116,19 @@ def compute_scaling_exponents(df: pd.DataFrame, durations: List = [5, 10, 20, 50
         binned_data.append(bin_data_into_quantiles(result))
     binned_result = pd.concat(binned_data)
     popt, pcov, fit_func = fit_scaling_form(binned_result)
+
+    return popt, pcov, fit_func, data_norm
+
+
+def compute_scaling_exponents(df: pd.DataFrame, durations: List = [5, 10, 20, 50, 100]):
+    data_norm = get_agg_features(df, durations)
+    # binned_data = []
+    #
+    # for T in durations:
+    #     result = data_norm[data_norm["T"] == T][["vol_imbalance", "T", "R"]]
+    #     binned_data.append(bin_data_into_quantiles(result))
+    # binned_result = pd.concat(binned_data)
+    popt, pcov, fit_func = fit_scaling_form(data_norm[["vol_imbalance", "T", "R"]])
 
     return popt, pcov, fit_func, data_norm
 

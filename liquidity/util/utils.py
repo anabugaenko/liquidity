@@ -4,12 +4,17 @@ from scipy import stats
 
 
 def smooth_outliers(
-    df: pd.DataFrame, columns=["vol_imbalance", "sign_imbalance"], std_level=3, remove=False, verbose=False
+    df: pd.DataFrame,
+    T: int,
+    columns=["vol_imbalance", "sign_imbalance"],
+    std_level=3,
+    remove=False,
+    verbose=False
 ):
     """
     Clip or remove values at 3 standard deviations for each series.
     """
-
+    columns_all = columns + [f"R{T}"]
     if remove:
         z = np.abs(stats.zscore(df[columns]))
         original_shape = df.shape
@@ -21,11 +26,12 @@ def smooth_outliers(
 
         def winsorize_queue(s: pd.Series, level) -> pd.Series:
             upper_bound = level * s.std()
+            lower_bound = - level * s.std()
             if verbose:
                 print(f"clipped at {upper_bound}")
-            return s.clip(upper=upper_bound)
+            return s.clip(upper=upper_bound, lower=lower_bound)
 
-        for name in columns:
+        for name in columns_all:
             s = df[name]
             if verbose:
                 print(f"Series {name}")

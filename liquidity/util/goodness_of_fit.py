@@ -75,31 +75,6 @@ def compute_bic_from_residuals(residuals: np.ndarray, num_parameters: int) -> fl
     return BIC
 
 
-def compute_bic_from_residuals(residuals: np.ndarray, num_parameters: int) -> float:
-    """
-    Compute the Bayesian Information Criterion (BIC) given the residuals using:
-
-        BIC = n * log(RSS/n) + k * log(n)
-
-    where n is the number of samples, k is the number of parameters and RSS is the residual sum of squares. In this way,
-    it uses the residuals directly without making any assumptions about the distribution of the data (or residuals).
-
-
-    Parameters:
-    residuals (np.ndarray): The residuals (difference between actual and predicted values).
-    num_parameters (int): The number of parameters in the model.
-
-    Returns:
-    float: The computed BIC value.
-
-    """
-    n = len(residuals)
-    RSS = np.sum(residuals**2)
-    BIC = n * np.log(RSS / n) + num_parameters * np.log(n)
-
-    return BIC
-
-
 def compute_rsquared(residuals, y_values, params):
     ssr = np.sum(residuals**2)
     sst = np.sum((y_values - np.mean(y_values)) ** 2)
