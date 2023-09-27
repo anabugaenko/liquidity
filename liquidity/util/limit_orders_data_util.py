@@ -9,7 +9,7 @@ from liquidity.util.orderbook import (
     shift_prices,
     select_best_quotes,
 )
-from liquidity.response_functions.price_response_functions import _price_response_function
+from liquidity.response_functions.price_response_functions import add_price_response
 from liquidity.util.trades_data_util import remove_midprice_trades
 
 
@@ -29,7 +29,7 @@ def get_lo_impact(filepath: str, date: str) -> pd.DataFrame:
     df = remove_midprice_orders(df)
     df = add_order_signs(df)
     df = select_lo_inserts(df)
-    df = _price_response_function(df, response_column="R1_LO")
+    df = add_price_response(df, response_column="R1_LO")
     df = normalise_lo_sizes(df)
     return df
 
@@ -45,7 +45,7 @@ def get_ca_impact(filepath: str, date: str) -> pd.DataFrame:
     df = select_cancellations(df)
     df = df.drop(["price", "size"], axis=1)
     df = rename_columns(df)
-    df = _price_response_function(df, response_column="R1_CA")
+    df = add_price_response(df, response_column="R1_CA")
     df = normalise_lo_sizes(df)
     return df
 
@@ -60,7 +60,7 @@ def get_qa_impact(raw_daily_df: pd.DataFrame, date: str) -> pd.DataFrame:
     df = add_order_signs(df)
     df = df.groupby(["event_timestamp"]).last()
     df = df.reset_index()
-    df = _price_response_function(df)
+    df = add_price_response(df)
     return df
 
 

@@ -4,14 +4,19 @@ import numpy as np
 from liquidity.util.utils import rename_columns, smooth_outliers
 
 
+# TODO: reconcile
+def add_price_response(df_: pd.DataFrame, response_column: str = 'R1') -> pd.DataFrame:
+    df_['midprice_change'] = df_['midprice'].diff().shift(-1).fillna(0)
+    df_[response_column] = df_['midprice_change'] * df_['sign']
+    return df_
+
 def _price_response_function(df_: pd.DataFrame, lag: int = 1, log_prices=False) -> pd.DataFrame:
     """
-    R(l)::
+    R(l):
         Lag one price response of market orders defined as difference in mid-price immediately before subsequent MO
         and the mid-price immediately before the current MO aligned by the original MO direction.
     """
     response_column = f"R{lag}"
-
     df_agg = df_.groupby(df_.index // lag).agg(
         midprice=("midprice", "first"),
         sign=("sign", "first"),
@@ -97,7 +102,7 @@ def normalise_axis(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def compute_price_response(
-    df: pd.DataFrame, lag: int = 1, normalise: bool = False, remove_outliers: bool = False, log_prices=False
+    df: pd.DataFrame, lag: int = 1, normalise: bool = False, remove_outliers: bool = True, log_prices=False
 ) -> pd.DataFrame:
     """
     R(l) interface::

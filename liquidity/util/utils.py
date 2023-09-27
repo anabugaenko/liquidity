@@ -5,7 +5,7 @@ from scipy import stats
 
 def smooth_outliers(
     df: pd.DataFrame,
-    T: int,
+    T=None,
     columns=["vol_imbalance", "sign_imbalance"],
     std_level=3,
     remove=False,
@@ -14,7 +14,8 @@ def smooth_outliers(
     """
     Clip or remove values at 3 standard deviations for each series.
     """
-    columns_all = columns + [f"R{T}"]
+    if T:
+        columns_all = columns + [f"R{T}"]
     if remove:
         z = np.abs(stats.zscore(df[columns]))
         original_shape = df.shape
