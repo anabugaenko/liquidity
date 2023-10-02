@@ -71,20 +71,36 @@ def add_order_signs(df_: pd.DataFrame) -> pd.DataFrame:
     return df_
 
 
-def add_returns(df, pct=True, remove_first=True):
+def compute_returns(df, pct=False, remove_first=True, T=None):
     """
-    To pd.DataFrame of order type time series add
-    percentage returns and absolute normalised (by its volatility) returns.
+    Add percentage returns or absolute normalised (by its volatility) returns
+    to pd.DataFrame of order type time series.
     """
+    # Bin or windows size
+    if T:
+        df = df.head(T)
+
     if type(df["event_timestamp"].iloc[0]) != pd.Timestamp:
         df["event_timestamp"] = df["event_timestamp"].apply(lambda x: pd.Timestamp(x))
     if remove_first:
         df = remove_first_daily_prices(df)
+
+    # Returns
     df["returns"] = df["midprice"].pct_change(1) if pct else df["midprice"].diff()
+
+    # Other representation of returns
+
+    # Remove any NaN or infinite values from the series of returns
     df = df[~df["returns"].isin([np.nan, np.inf, -np.inf])]
     std = np.std(df["returns"])
     df["norm_returns"] = abs(df["returns"] / std)
+    df['pct_change'] = df["midprice"].pct_change()
+    df['log_returns'] = np.log(df["midprice"]) - np.log(df["midprice"].shift(1))
+    df['cumsum_returns'] = df['returns'].cumsum()
+    df['cumprod_returns'] = (1 + df['returns']).cumprod()
+
     return df
+
 
 
 def remove_midprice_orders(df_: pd.DataFrame) -> pd.DataFrame:
