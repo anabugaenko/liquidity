@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit, least_squares
 
-from liquidity.util.fitting_util import get_agg_features, bin_data_into_quantiles
+from liquidity.util.utils import bin_data_into_quantiles, get_agg_features
 from typing import List
 
 
@@ -61,13 +61,41 @@ def scaling_form_reflect(orderflow_imbalance, chi, kappa, alpha, beta, gamma):
     return np.power(T, chi) * scaling_function(normalised_imbalance, alpha, beta) * gamma
 
 
+def fit_aggregate_impact(x, y, known_alpha=None, know_beta=None):
+    """
+    Fits saclaing form with known parameters from scaling function
+
+    """
+    # TODO: Reconcile with scaling form and scaling function
+    if known_alpha and know_beta:
+        def aggregate_impact(Q: float, RN: float, QN: float) -> float:
+            """
+            This version treats RN and QN as constants to be found during optimisation.
+            """
+
+            return RN * scaling_function(Q / QN, known_alpha, know_beta)
+    else:
+        def aggregate_impact(Q: float, RN: float, QN: float,
+                             alpha: float, beta: float) -> float:
+            """
+            This version treats RN and QN as constants to be found during optimisation.
+            """
+
+            return RN * scaling_function(Q / QN, alpha, beta)
+
+    def _residuals(params, x, y):
+        return y - aggregate_impact(x, *params)
+
+    num_params = aggregate_impact.__code__.co_argcount - 1
+    initial_guess = [0.5] * num_params
+    result = least_squares(_residuals, initial_guess, args=(x, y),loss='soft_l1')
+    return result.x
+
+
 def fit_scaling_form(data_all, y_reflect=False, f_scale=0.2, verbose=False):
     fit_func = scaling_form if not y_reflect else scaling_form_reflect
 
     try:
-        # popt, pcov = curve_fit(fit_func, np.transpose(data_all.iloc[:, :2].to_numpy()),
-        #                        data_all.iloc[:, 2].to_numpy(),
-        #                        bounds=(0, np.inf), loss='soft_l1', f_scale=f_scale)
         initial_guess = [0.5, 0.5, 1.0, 1.0, 1.0]
         popt, pcov = curve_fit(
             fit_func,

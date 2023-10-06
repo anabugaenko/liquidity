@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
-
-from liquidity.util.utils import rename_columns, smooth_outliers
+from scipy import stats
 
 
 # TODO: reconcile
@@ -12,6 +11,7 @@ def add_price_response(df_: pd.DataFrame, response_column: str = 'R1') -> pd.Dat
 
 def _price_response_function(df_: pd.DataFrame, lag: int = 1, log_prices=False) -> pd.DataFrame:
     """
+    : math :
     R(l):
         Lag one price response of market orders defined as difference in mid-price immediately before subsequent MO
         and the mid-price immediately before the current MO aligned by the original MO direction.
@@ -141,3 +141,70 @@ def compute_conditional_aggregate_impact(
     if remove_outliers:
         data = smooth_outliers(data, T=T)
     return data
+
+
+def smooth_outliers(
+    df: pd.DataFrame,
+    T=None,
+    columns=["vol_imbalance", "sign_imbalance"],
+    std_level=3,
+    remove=False,
+    verbose=False
+):
+    """
+    Clip or remove values at 3 standard deviations for each series.
+    """
+    if T:
+        columns_all = columns + [f"R{T}"]
+    else:
+        columns_all = columns
+
+    columns_all = set(columns_all).intersection(df.columns)
+    if len(columns_all) == 0:
+        return df
+
+    if remove:
+        z = np.abs(stats.zscore(df[columns]))
+        original_shape = df.shape
+        df = df[(z < std_level).all(axis=1)]
+        new_shape = df.shape
+        if verbose:
+            print(f"Removed {original_shape[0] - new_shape[0]} rows")
+    else:
+
+        def winsorize_queue(s: pd.Series, level) -> pd.Series:
+            upper_bound = level * s.std()
+            lower_bound = - level * s.std()
+            if verbose:
+                print(f"clipped at {upper_bound}")
+            return s.clip(upper=upper_bound, lower=lower_bound)
+
+        for name in columns_all:
+            s = df[name]
+            if verbose:
+                print(f"Series {name}")
+            df[name] = winsorize_queue(s, level=std_level)
+
+    return df
+
+
+def rename_columns(df_: pd.DataFrame) -> pd.DataFrame:
+    df_columns = df_.columns
+
+    if "old_price" in df_columns and "old_size" in df_columns:
+        df_ = df_.drop(["price", "size"], axis=1)
+        df_ = df_.rename(columns={"old_price": "price", "old_size": "size"})
+
+    if "R1_CA" in df_columns:
+        df_ = df_.rename(columns={"R1_CA": "R1"})
+
+    if "R1_LO" in df_columns:
+        df_ = df_.rename(columns={"R1_LO": "R1"})
+
+    if "execution_size" in df_columns:
+        df_ = df_.rename(columns={"execution_size": "size"})
+
+    if "trade_sign" in df_columns:
+        df_ = df_.rename(columns={"trade_sign": "sign"})
+
+    return df_

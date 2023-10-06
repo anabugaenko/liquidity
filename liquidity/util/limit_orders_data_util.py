@@ -1,6 +1,6 @@
 import pandas as pd
 
-from liquidity.util.utils import remove_midprice_orders, rename_columns, add_order_signs
+from liquidity.util.utils import remove_midprice_orders, add_order_signs
 from liquidity.util.orderbook import (
     load_l3_data,
     select_trading_hours,
@@ -9,7 +9,7 @@ from liquidity.util.orderbook import (
     shift_prices,
     select_best_quotes,
 )
-from liquidity.response_functions.price_response_functions import add_price_response
+from liquidity.response_functions.price_response_functions import add_price_response, rename_columns
 from liquidity.util.trades_data_util import remove_midprice_trades
 
 
