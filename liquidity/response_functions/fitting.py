@@ -6,14 +6,18 @@ from liquidity.util.utils import bin_data_into_quantiles, get_agg_features
 from typing import List
 
 
-class FitResult:
+class RescaledFormFitResult:
     T: int
-    params: List
+    param: List  # RN, QN
+    alpha: float
+    beta: float
     data: pd.DataFrame
 
-    def __init__(self, T, params, data):
+    def __init__(self, T, param, alpha, beta, data):
         self.T = T
-        self.params = params
+        self.param = param
+        self.alpha = alpha
+        self.beta = beta
         self.data = data
 
 
@@ -64,7 +68,6 @@ def scaling_form(orderflow_imbalance, chi, kappa, alpha, beta, gamma):
 def scaling_form_reflect(orderflow_imbalance, chi, kappa, alpha, beta, gamma):
     """
     Inverse (on y axis) sigmoid.
-    TODO: fix gamma
     """
     imbalance = orderflow_imbalance[0]
     T = orderflow_imbalance[1]
@@ -75,28 +78,18 @@ def scaling_form_reflect(orderflow_imbalance, chi, kappa, alpha, beta, gamma):
 def fit_rescaled_form(x, y, known_alpha=None, know_beta=None):
     """
     Fits scaling form with known parameters from scaling function
-
     """
-    if known_alpha and know_beta:
-        def rescaled_form(Q: float, RN: float, QN: float) -> float:
-            """
-            This version treats RN and QN as constants to be found during optimisation.
-            """
+    def _rescaled_form(Q: float, RN: float, QN: float) -> float:
+        """
+        This version treats RN and QN as constants to be found during optimisation.
+        """
 
-            return RN * scaling_function(Q / QN, known_alpha, know_beta)
-    else:
-        def rescaled_form(Q: float, RN: float, QN: float,
-                             alpha: float, beta: float) -> float:
-            """
-            This version treats RN and QN as constants to be found during optimisation.
-            """
-
-            return RN * scaling_function(Q / QN, alpha, beta)
+        return RN * scaling_function(Q / QN, known_alpha, know_beta)
 
     def _residuals(params, x, y):
-        return y - rescaled_form(x, *params)
+        return y - _rescaled_form(x, *params)
 
-    num_params = rescaled_form.__code__.co_argcount - 1
+    num_params = _rescaled_form.__code__.co_argcount - 1
     initial_guess = [0.5] * num_params
     result = least_squares(_residuals, initial_guess, args=(x, y),loss='soft_l1')
     return result.x
@@ -126,7 +119,7 @@ def fit_scaling_form(data_all, y_reflect=False, f_scale=0.2, verbose=False):
         return None, None, None
 
 
-def compute_fit_results(features_df, alpha, beta, MAX_LAG=1000):
+def rescaled_form_fit_results(features_df, alpha, beta, MAX_LAG=1000):
     fit_results = {}
     for lag in range(1, MAX_LAG):
         result = features_df[features_df['T'] == lag][['vol_imbalance', 'R']]
@@ -136,13 +129,7 @@ def compute_fit_results(features_df, alpha, beta, MAX_LAG=1000):
         x = binned_result['vol_imbalance'].values
         y = binned_result['R'].values
         param = fit_rescaled_form(x, y, known_alpha=alpha, know_beta=beta)
-        fit_results[lag] = {
-            'param': param,
-            'x': x,
-            'y': y,
-            'alpha': alpha,
-            'beta': beta
-        }
+        fit_results[lag] = RescaledFormFitResult(lag, param, alpha, beta, pd.DataFrame({'x': x, 'y': y}))
 
     return fit_results
 
@@ -151,7 +138,14 @@ def compute_RN_QN(fitting_result_dict):
     Helper function to extract series of RN and QN
     from fit param for each N
     """
-    pass
+    RN = []
+    QN = []
+    for lag, result in fitting_result_dict.items():
+        RN.append(result.param[0])
+        QN.append(result.param[1])
+
+    return RN, QN
+
 
 
 def fit_scaling_function(df, x_col="vol_imbalance", y_col="R", y_reflect=False, verbose=False):
@@ -179,6 +173,10 @@ def compute_scaling_exponents(df: pd.DataFrame, durations: List = [5, 10, 20, 50
 
 
 def renormalise(df: pd.DataFrame, params, durations: List = [5, 10, 20, 50, 100]):
+    """
+
+    TODO: is this still needed/used?
+    """
     chi, kappa, alpha, beta, gamma = params
     fit_param = {}
     for T in durations:
