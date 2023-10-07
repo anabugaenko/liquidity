@@ -33,12 +33,11 @@ def compute_returns(df, pct=False, remove_first=True):
     # Returns
     df.loc[:, "returns"] = df["midprice"].pct_change(1) if pct else df["midprice"].diff()
 
-    # Other representation of returns
 
     # Remove any NaN or infinite values
     df = df[~df["returns"].isin([np.nan, np.inf, -np.inf])]
 
-    # Compute returns under different representations
+    # Other representation of returns
     std = np.std(df["returns"])
     df["norm_returns"] = abs(df["returns"] / std)
     df['pct_change'] = df["midprice"].pct_change()
@@ -91,12 +90,12 @@ def bin_data_into_quantiles(df, x_col="vol_imbalance", y_col="R", q=100, duplica
     return pd.concat([x_binned, r_binned, y_binned], axis=1).reset_index(drop=True)
 
 
-def get_agg_features(df: pd.DataFrame, durations: List[int]) -> pd.DataFrame:
+def get_agg_features(df: pd.DataFrame, durations: List[int], **kwargs) -> pd.DataFrame:
     df["event_timestamp"] = df["event_timestamp"].apply(lambda x: pd.Timestamp(x))
     df["date"] = df["event_timestamp"].apply(lambda x: x.date())
     results_ = []
     for i, T in enumerate(durations):
-        lag_data = compute_conditional_aggregate_impact(df, T=T, normalise=True)
+        lag_data = compute_conditional_aggregate_impact(df, T=T, normalise=True, **kwargs)
         lag_data["R"] = lag_data[f"R{T}"]
         lag_data = lag_data.drop(columns=f"R{T}")
         lag_data["T"] = T
