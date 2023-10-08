@@ -4,10 +4,11 @@ from scipy import stats
 
 
 # TODO: reconcile
-def add_price_response(df_: pd.DataFrame, response_column: str = 'R1') -> pd.DataFrame:
-    df_['midprice_change'] = df_['midprice'].diff().shift(-1).fillna(0)
-    df_[response_column] = df_['midprice_change'] * df_['sign']
+def add_price_response(df_: pd.DataFrame, response_column: str = "R1") -> pd.DataFrame:
+    df_["midprice_change"] = df_["midprice"].diff().shift(-1).fillna(0)
+    df_[response_column] = df_["midprice_change"] * df_["sign"]
     return df_
+
 
 def _price_response_function(df_: pd.DataFrame, lag: int = 1, log_prices=False) -> pd.DataFrame:
     """
@@ -144,12 +145,7 @@ def compute_conditional_aggregate_impact(
 
 
 def smooth_outliers(
-    df: pd.DataFrame,
-    T=None,
-    columns=["vol_imbalance", "sign_imbalance"],
-    std_level=3,
-    remove=False,
-    verbose=False
+    df: pd.DataFrame, T=None, columns=["vol_imbalance", "sign_imbalance"], std_level=2, remove=False, verbose=False
 ):
     """
     Clip or remove values at 3 standard deviations for each series.
@@ -174,7 +170,7 @@ def smooth_outliers(
 
         def winsorize_queue(s: pd.Series, level) -> pd.Series:
             upper_bound = level * s.std()
-            lower_bound = - level * s.std()
+            lower_bound = -level * s.std()
             if verbose:
                 print(f"clipped at {upper_bound}")
             return s.clip(upper=upper_bound, lower=lower_bound)

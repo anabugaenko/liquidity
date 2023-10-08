@@ -33,17 +33,16 @@ def compute_returns(df, pct=False, remove_first=True):
     # Returns
     df.loc[:, "returns"] = df["midprice"].pct_change(1) if pct else df["midprice"].diff()
 
-
     # Remove any NaN or infinite values
     df = df[~df["returns"].isin([np.nan, np.inf, -np.inf])]
 
     # Other representation of returns
     std = np.std(df["returns"])
     df["norm_returns"] = abs(df["returns"] / std)
-    df['pct_change'] = df["midprice"].pct_change()
-    df['log_returns'] = np.log(df["midprice"]) - np.log(df["midprice"].shift(1))
-    df['cumsum_returns'] = df['returns'].cumsum()
-    df['cumprod_returns'] = (1 + df['returns']).cumprod()
+    df["pct_change"] = df["midprice"].pct_change()
+    df["log_returns"] = np.log(df["midprice"]) - np.log(df["midprice"].shift(1))
+    df["cumsum_returns"] = df["returns"].cumsum()
+    df["cumprod_returns"] = (1 + df["returns"]).cumprod()
 
     return df
 

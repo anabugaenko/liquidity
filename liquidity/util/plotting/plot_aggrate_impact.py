@@ -309,7 +309,7 @@ def plot_collapsed_fitted_func(
             if popt is not None:
                 plt.plot(
                     q,
-                    fit_param[T][2](np.array([q, len(q)*[T]]), *popt),
+                    fit_param[T][2](np.array([q, len(q) * [T]]), *popt),
                     # linestyle=LINESTYLE_LIST[indx],
                     # marker=MARKETS_LIST[indx], markerfacecolor=markers_color,
                     markevery=0.05,

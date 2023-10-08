@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit, least_squares
 
+from powerlaw_function import Fit
+
 from liquidity.util.utils import bin_data_into_quantiles, get_agg_features
 from typing import List
 
@@ -79,6 +81,7 @@ def fit_rescaled_form(x, y, known_alpha=None, know_beta=None):
     """
     Fits scaling form with known parameters from scaling function
     """
+
     def _rescaled_form(Q: float, RN: float, QN: float) -> float:
         """
         This version treats RN and QN as constants to be found during optimisation.
@@ -91,8 +94,9 @@ def fit_rescaled_form(x, y, known_alpha=None, know_beta=None):
 
     num_params = _rescaled_form.__code__.co_argcount - 1
     initial_guess = [0.5] * num_params
-    result = least_squares(_residuals, initial_guess, args=(x, y),loss='soft_l1')
+    result = least_squares(_residuals, initial_guess, args=(x, y), loss="soft_l1")
     return result.x
+
 
 def fit_scaling_form(data_all, y_reflect=False, f_scale=0.2, verbose=False):
     fit_func = scaling_form if not y_reflect else scaling_form_reflect
@@ -120,32 +124,56 @@ def fit_scaling_form(data_all, y_reflect=False, f_scale=0.2, verbose=False):
 
 
 def rescaled_form_fit_results(features_df, alpha, beta, MAX_LAG=1000):
+    # Rename
     fit_results = {}
     for lag in range(1, MAX_LAG):
-        result = features_df[features_df['T'] == lag][['vol_imbalance', 'R']]
+        result = features_df[features_df["T"] == lag][["vol_imbalance", "R"]]
         result.replace([np.inf, -np.inf], np.nan, inplace=True)
         result.dropna(inplace=True)
-        binned_result = bin_data_into_quantiles(result, x_col='vol_imbalance', duplicates='drop', q=31)
-        x = binned_result['vol_imbalance'].values
-        y = binned_result['R'].values
+        binned_result = bin_data_into_quantiles(result, x_col="vol_imbalance", duplicates="drop", q=31)
+        x = binned_result["vol_imbalance"].values
+        y = binned_result["R"].values
         param = fit_rescaled_form(x, y, known_alpha=alpha, know_beta=beta)
-        fit_results[lag] = RescaledFormFitResult(lag, param, alpha, beta, pd.DataFrame({'x': x, 'y': y}))
+        fit_results[lag] = RescaledFormFitResult(lag, param, alpha, beta, pd.DataFrame({"x": x, "y": y}))
 
     return fit_results
 
-def compute_RN_QN(fitting_result_dict):
+
+def _find_scaling_exponents(fitting_method: str, xy_values: pd.DataFrame) -> Fit:
+    """Fits the data using the specified method and returns the fitting results."""
+    if fitting_method == "MLE":
+        return Fit(xy_values, xmin_distance="BIC", xmin_index=10)
+    return Fit(xy_values, nonlinear_fit_method=fitting_method, xmin_distance="BIC")
+
+
+def compute_RN_QN(features_df, alpha, beta, fitting_method="MLE"):
     """
     Helper function to extract series of RN and QN
     from fit param for each N
     """
-    RN = []
-    QN = []
-    for lag, result in fitting_result_dict.items():
-        RN.append(result.param[0])
-        QN.append(result.param[1])
 
-    return RN, QN
+    # fit rescaled form at each N, returns dictionary of fitting results
+    fit_results_per_lag = rescaled_form_fit_results(features_df, alpha, beta)
 
+    RN_series = []
+    QN_series = []
+    for lag, result in fit_results_per_lag.items():
+        RN_series.append(result.param[0])
+        QN_series.append(result.param[1])
+
+    lags = list(fit_results_per_lag.keys())
+
+    # Fit and return scaling exponents
+    RN_df = pd.DataFrame({"x_values": lags, "y_values": RN_series})
+    QN_df = pd.DataFrame({"x_values": lags, "y_values": QN_series})
+
+    RN_df = RN_df[RN_df["y_values"] >= RN_df["y_values"].iloc[10]]
+    QN_df = QN_df[QN_df["y_values"] >= QN_df["y_values"].iloc[10]]
+
+    RN_fit_object = _find_scaling_exponents(fitting_method, RN_df)
+    QN_fit_object = _find_scaling_exponents(fitting_method, QN_df)
+
+    return RN_df, QN_df, RN_fit_object, QN_fit_object
 
 
 def fit_scaling_function(df, x_col="vol_imbalance", y_col="R", y_reflect=False, verbose=False):
@@ -166,16 +194,30 @@ def rescale_data(df: pd.DataFrame, popt, imbalance_col="vol_imbalance") -> pd.Da
     return df
 
 
-def compute_scaling_exponents(df: pd.DataFrame, durations: List = [5, 10, 20, 50, 100]):
+def compute_shape_parameters(df: pd.DataFrame, durations: List = [5, 10, 20, 50, 100]):
+    """
+    Computes shape parameters Alpha and Beta from known features
+    """
     data_norm = get_agg_features(df, durations)
     popt, pcov, fit_func = fit_scaling_form(data_norm[["vol_imbalance", "T", "R"]])
     return popt, pcov, fit_func, data_norm
 
 
+class FitResult:
+    T: int
+    params: List
+    data: pd.DataFrame
+
+    def __init__(self, T, params, data):
+        self.T = T
+        self.params = params
+        self.data = data
+
+
 def renormalise(df: pd.DataFrame, params, durations: List = [5, 10, 20, 50, 100]):
     """
 
-    TODO: is this still needed/used?
+    Used for renormalisation and collapse at different scales.
     """
     chi, kappa, alpha, beta, gamma = params
     fit_param = {}
