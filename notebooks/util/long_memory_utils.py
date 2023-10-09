@@ -1,51 +1,76 @@
 import os
 import pickle
 import matplotlib.pyplot as plt
-from typing import Dict, Union, List
 
+from typing import Tuple, Dict, Any, List, Union
+
+import pandas as pd
 from powerlaw_function import Fit
 
+from hurst_exponent.hurst_exponent import standard_hurst, generalized_hurst
 from hurst_exponent.acf import linear_acf, nonlinear_acf
 
-from pathos.multiprocessing import ProcessingPool
+
+from multiprocessing import Pool, cpu_count
 
 # Helper functions
 
+# Define a pool worker function outside the main function
+def pool_worker(args):
+    stock, values, option, acf_range = args
+    return compute_acf(stock, values, option=option, acf_range=acf_range)
 
-def compute_and_load_acf(
-    filename: str,
-    acf_series_dict: Dict[str, Union[float, int]],
-    option: str = "linear",
-    acf_range=1001,
-    processes: int = 4,
-) -> Dict[str, Union[float, int]]:
+
+def compute_acf(stock: str,
+                data: Union[float, int],
+                option: str = "linear",
+                acf_range: int = 1001) -> Tuple[str, Union[float, int]]:
+    """
+    Computes the autocorrelation function (ACF) for a given stock's data based on the specified option.
+
+    Parameters:
+    - stock (str): Name of the stock.
+    - data (Union[float, int]): Time series data.
+    - option (str): 'linear' or 'nonlinear' to specify the ACF computation method.
+    - acf_range (int): Range for the ACF computation.
+
+    Returns:
+    - Tuple containing the stock name and its ACF result.
+    """
+    result = None
+    if option == "linear":
+        result = linear_acf(data, acf_range)
+    elif option == "nonlinear":
+        result = nonlinear_acf(data, acf_range)
+    return stock, result
+
+
+def compute_acfs(filename: str,
+                 data: Dict[str, Union[float, int]],
+                 option: str = "linear",
+                 acf_range: int = 1001,
+                 processes: int = 4) -> Dict[str, Union[float, int]]:
     """
     Computes and loads autocorrelation functions (ACF) for given returns based on the specified option.
 
     :param filename: File name to load/save data.
-    :param acf_series_dict: A dictionary mapping stock names to their respective ACF data to series.
+    :param data: A dictionary mapping strings (e.g., stock names) to their respective data series.
     :param option: 'linear' or 'nonlinear'.
     :param acf_range: Range for the ACF computation.
     :param processes: Number of processes for parallel processing.
 
     :return: Dictionary containing ACF results.
     """
-
     if not os.path.exists(filename):
-        # Define a function that computes the specified ACF for each stock.
-        def compute_acf(stock_series):
-            stock, series = stock_series
-            result = None
-            if option == "linear":
-                result = linear_acf(series, acf_range)
-            elif option == "nonlinear":
-                result = nonlinear_acf(series, acf_range)
-            return stock, result
+        # Ensure we don't request more processes than available CPUs
+        processes = min(processes, cpu_count())
 
-        pool = ProcessingPool(processes=processes)
-        results = pool.map(compute_acf, acf_series_dict.items())
-        pool.close()
-        pool.join()
+        # Adjust data items to include the option and acf_range
+        task_args = [(stock, values, option, acf_range) for stock, values in data.items()]
+
+        # Use a context manager for the pool
+        with Pool(processes=processes) as pool:
+            results = pool.map(pool_worker, task_args)
 
         # Organize results
         acf_results = {stock: result for stock, result in results}
@@ -61,63 +86,50 @@ def compute_and_load_acf(
     return acfs
 
 
-def plot_acf_difference(
-    stock_name: str, linear_acfs: Dict[str, List[float]], nonlinear_acfs: Dict[str, List[float]], acf_range: int = 1001
-) -> None:
+def compute_hurst_exponent(random_variate: str,
+                           stock: str,
+                           data: pd.Series,
+                           method: str = 'standard') -> Tuple[Union[None, Dict[str, Any]], Any]:
     """
-    Plot and compare the difference between linear and nonlinear ACF for a specific stock.
+    Computes the Hurst exponent for a given stock's data using specified methods.
 
-    :param stock_name: Name of the stock.
-    :param linear_acfs: Linear ACFs data.
-    :param nonlinear_acfs: Nonlinear ACFs data.
-    :param acf_range: Range of ACF computation.
+    Parameters:
+    - stock (str): Name of the stock.
+    - random_variate (str): Type of random variate considered for the analysis.
+    - data (pd.Series): Time series data of stock returns.
+    - method (str): Either 'standard' or 'generalized' to compute Hurst exponent.
 
-    :return: None
+    Returns:
+    - Dictionary containing the fitted parameters, Hurst value, stock name, and random variate type.
+    - Fitted power law object, or None.
     """
+    # Computing the Hurst exponent based on the method
+    if method == 'standard':
+        hurst_val, fit = standard_hurst(data)
+    elif method == 'generalized':
+        hurst_val, fit = generalized_hurst(data)
+    else:
+        raise ValueError("Invalid method provided. Choose either 'standard' or 'generalized'.")
 
-    linear_acf, nonlinear_acf = linear_acfs[stock_name], nonlinear_acfs[stock_name]
-    difference = [x1 - x2 for x1, x2 in zip(linear_acf, nonlinear_acf)]
+    fit_dict = fit.powerlaw.to_dictionary()
 
-    plt.figure(figsize=(14, 4))
-
-    # Original scale
-    plt.subplot(1, 3, 1)
-    plt.plot(linear_acf, label="Linear")
-    plt.plot(nonlinear_acf, label="Nonlinear", color="green")
-    plt.legend(frameon=False)
-    plt.grid(False)
-
-    # Log scale
-    plt.subplot(1, 3, 2)
-    plt.plot(linear_acf, label="Linear")
-    plt.plot(nonlinear_acf, label="Nonlinear", color="green")
-    plt.loglog()
-    plt.legend(frameon=False)
-    plt.grid(False)
-
-    # Difference
-    plt.subplot(1, 3, 3)
-    plt.plot(difference, label="Difference", color="red")
-    plt.legend(frameon=False)
-    plt.grid(False)
-
-    plt.suptitle(f"Linear vs nonlinear ACF across lags for {stock_name} MO Returns")
-    plt.show()
-
-    print(f"{stock_name} Max difference: {max(difference)}")
+    # Update the dictionary with Hurst values, stock name, and random variate
+    if fit_dict.get("function_name") == "powerlaw":
+        fit_dict.update({
+            f'{method}_hurst': hurst_val,
+            'stock': stock,
+            'random_variate': random_variate
+        })
+        return fit_dict, fit
+    return None, None
 
 
-from typing import Tuple, Dict, Any, List, Union
-import pandas as pd
-from powerlaw import Fit
-
-
-def get_acf_params(stock_data_tuple: Tuple[str, List[float]]) -> Tuple[Union[None, Dict[str, Any]], Any]:
+def get_acf_params(stock, data) -> Tuple[Union[None, Dict[str, Any]], Any]:
     """
     Fits a power law to the autocorrelation function (ACF) of a stock's data
     to extract the long-memory parameter γ (gamma/gramma).
 
-    A process is characterized as long-memory if, as \( k \to \infty \):
+    A process is characterized as long-memory if, as \( x \to \infty \):
 
     .. math::
         C(l) \sim \frac{c_\infty}{l^\gamma}
@@ -132,16 +144,67 @@ def get_acf_params(stock_data_tuple: Tuple[str, List[float]]) -> Tuple[Union[Non
     - Fitted power law object, or None.
     """
 
-    stock, data = stock_data_tuple
     fit = Fit(data)  # Fitting powerlaw to the DataFrame passed here
     fit_dict = fit.powerlaw.to_dictionary()
 
     if fit_dict.get("function_name") == "powerlaw":
         gamma = fit.powerlaw.params.alpha  # γ is analogous to 'alpha' in this context
         fit_dict.update({"gamma": gamma, "stock": stock})  # rename alpha to gamma
-        return fit_dict, fit  # Return both dictionary and fit object
+        return fit_dict, fit
     return None, None
 
 
-fit_results_list = []
-fit_objects = {}  # Dictionary to store fit objects
+def plot_acf_difference(
+        stock_name: Union[str, Dict[str, List[float]]],
+        linear_acfs: Dict[str, List[float]],
+        nonlinear_acfs: Dict[str, List[float]],
+        acf_range: int = 1001
+) -> None:
+    """
+    Plot and compare the difference between linear and nonlinear ACF for a specific stock
+    or multiple stocks.
+
+    :param stock_name: Name of the stock or a dictionary of multiple stock data.
+    :param linear_acfs: Linear ACFs data.
+    :param nonlinear_acfs: Nonlinear ACFs data.
+    :param acf_range: Range of ACF computation.
+
+    :return: None
+    """
+
+    if isinstance(stock_name, str):
+        stocks = [stock_name]
+    else:
+        stocks = list(stock_name.keys())
+
+    for stock in stocks:
+        linear_acf, nonlinear_acf = linear_acfs[stock], nonlinear_acfs[stock]
+        difference = [x1 - x2 for x1, x2 in zip(linear_acf, nonlinear_acf)]
+
+        plt.figure(figsize=(14, 4))
+
+        # Original scale
+        plt.subplot(1, 3, 1)
+        plt.plot(linear_acf, label="Linear")
+        plt.plot(nonlinear_acf, label="Nonlinear", color="green")
+        plt.legend(frameon=False)
+        plt.grid(False)
+
+        # Log scale
+        plt.subplot(1, 3, 2)
+        plt.plot(linear_acf, label="Linear")
+        plt.plot(nonlinear_acf, label="Nonlinear", color="green")
+        plt.loglog()
+        plt.legend(frameon=False)
+        plt.grid(False)
+
+        # Difference
+        plt.subplot(1, 3, 3)
+        plt.plot(difference, label="Difference", color="red")
+        plt.legend(frameon=False)
+        plt.grid(False)
+
+        plt.suptitle(f"Linear vs nonlinear ACF across lags for {stock} MO Returns")
+        plt.show()
+
+        print(f"{stock} Max difference: {max(difference)}")

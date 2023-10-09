@@ -2,7 +2,7 @@ import os
 import pickle
 import numpy as np
 import pandas as pd
-from typing import Dict, List
+from typing import Dict, List, Union, Tuple
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -13,18 +13,30 @@ from powerlaw import Fit, plot_pdf, plot_cdf, plot_ccdf
 
 # Helper functions
 
-
-def fit_powerlaw_and_save(stock_to_series_dict, filename):
+def fit_powerlaw(
+    stock_data: Union[str, Dict[str, list]],
+    series_data: Union[list, None] = None,
+    filename: str = "default.pkl"
+) -> Dict:
     """
-    Fits series for each stock, serializes the fit, and saves the serialized fit to a file.
+    Fits power law distribution to series for each stock, serializes the fit,
+    and saves the serialized fit to a pickle file for lazy loading.
 
-    :param stock_to_series_dict: A dictionary mapping stock names to their respective series.
+    :param stock_data: Either the stock name (when series_data is provided) or a dictionary mapping stock names to their respective series.
+    :param series_data: The series for the stock (used when stock_data is a string).
     :param filename: The name of the file where the serialized fit will be saved.
     :return: A dictionary mapping stock names to their respective fit objects.
     """
+    if isinstance(stock_data, str) and series_data is not None:
+        stocks_to_series = {stock_data: series_data}
+    elif isinstance(stock_data, dict):
+        stocks_to_series = stock_data
+    else:
+        raise ValueError("Invalid input. Please provide a valid stock name and series or a dictionary mapping stock names to series.")
+
     # 1. Fit the series for each stock
     fit_results = {}
-    for stock_name, series in stock_to_series_dict.items():
+    for stock_name, series in stocks_to_series.items():
         fit = Fit(series.dropna(), discrete=False)
         fit_results[stock_name] = fit
 
@@ -62,7 +74,157 @@ def load_fit_objects(filename):
     return fit_objects
 
 
-def plot_distributions(data, stock_name):
+# def get_fitting_params(fit_objects: Dict[str, Fit], distribution: str) -> pd.DataFrame:
+#     """
+#     Retrieves fitting parameters for a specified distribution across stocks.
+#
+#     :param fit_objects: Dictionary of stock names to Fit objects.
+#     ::param distribution: Alternative distribution name for comparison. Supported distributions are:
+#     'power_law', 'lognormal', 'exponential','truncated_power_law', 'stretched_exponential',
+#     and 'lognormal_positive'.
+#
+#     :return: DataFrame containing fitting parameters for the given distribution.
+#     """
+#
+#     param_map = {
+#         "power_law": ["alpha"],
+#         "lognormal": ["mu", "sigma"],
+#         "exponential": ["Lambda"],
+#         "truncated_power_law": ["alpha", "Lambda", "xmin"],
+#         "stretched_exponential": ["Lambda", "beta"],
+#         "lognormal_positive": ["mu", "sigma"],
+#     }
+#
+#     def get_params(fit, dist) -> List:
+#         """Utility to fetch distribution parameters and handle errors."""
+#         try:
+#             return [getattr(fit, dist).__getattribute__(param) for param in param_map[dist]]
+#         except AttributeError:
+#             return [np.nan] * len(param_map[dist])
+#
+#     results = []
+#     for stock_name, fit in fit_objects.items():
+#         base_result = {"Stock": stock_name, "Distribution": distribution}
+#         params = get_params(fit, distribution)
+#         base_result.update(zip(param_map[distribution], params))
+#         base_result.update(
+#             {"xmin": fit.xmin, "KS Distance": getattr(fit, distribution).D if hasattr(fit, distribution) else np.nan}
+#         )
+#         results.append(base_result)
+#
+#     return pd.DataFrame(results)
+def get_fitting_params(fit_input: Union[Dict[str, Fit], Tuple[str, Fit]], distribution: str) -> pd.DataFrame:
+    """
+    Retrieves fitting parameters for a specified distribution across stocks.
+
+    :param fit_input: Either a tuple containing a single stock name and its Fit object or a dictionary mapping stock names to their respective Fit objects.
+    :param distribution: Alternative distribution name for comparison. Supported distributions are:
+    'power_law', 'lognormal', 'exponential','truncated_power_law', 'stretched_exponential',
+    and 'lognormal_positive'.
+
+    :return: DataFrame containing fitting parameters for the given distribution.
+    """
+
+    # Check input type and adjust accordingly
+    if isinstance(fit_input, tuple) and len(fit_input) == 2:
+        stock_name, fit = fit_input
+        fit_objects = {stock_name: fit}
+    elif isinstance(fit_input, dict):
+        fit_objects = fit_input
+    else:
+        raise ValueError("Invalid input. Please provide a valid stock name and fit or a dictionary mapping stock names to fits.")
+
+    param_map = {
+        "power_law": ["alpha"],
+        "lognormal": ["mu", "sigma"],
+        "exponential": ["Lambda"],
+        "truncated_power_law": ["alpha", "Lambda", "xmin"],
+        "stretched_exponential": ["Lambda", "beta"],
+        "lognormal_positive": ["mu", "sigma"],
+    }
+
+    def get_params(fit, dist) -> List:
+        """Utility to fetch distribution parameters and handle errors."""
+        try:
+            return [getattr(fit, dist).__getattribute__(param) for param in param_map[dist]]
+        except AttributeError:
+            return [np.nan] * len(param_map[dist])
+
+    results = []
+    for stock_name, fit in fit_objects.items():
+        base_result = {"Stock": stock_name, "Distribution": distribution}
+        params = get_params(fit, distribution)
+        base_result.update(zip(param_map[distribution], params))
+        base_result.update(
+            {"xmin": fit.xmin, "KS Distance": getattr(fit, distribution).D if hasattr(fit, distribution) else np.nan}
+        )
+        results.append(base_result)
+
+    return pd.DataFrame(results)
+
+
+def distribution_compare(fit_input: Union[Dict[str, powerlaw.Fit], Tuple[str, powerlaw.Fit]],
+                         distribution: str) -> pd.DataFrame:
+    """
+    Compares power law distribution to a specified alternative distribution across stocks.
+
+    :param fit_input: Either a tuple containing a single stock name and its Fit object or a dictionary mapping stock names to their respective Fit objects.
+    :param distribution: Alternative distribution name for comparison. Supported distributions are:
+    'power_law', 'lognormal', 'exponential','truncated_power_law', 'stretched_exponential',
+    and 'lognormal_positive'.
+
+    :return: DataFrame containing comparison results.
+    """
+
+    # Check input type and adjust accordingly
+    if isinstance(fit_input, tuple) and len(fit_input) == 2:
+        stock_name, fit = fit_input
+        fit_objects = {stock_name: fit}
+    elif isinstance(fit_input, dict):
+        fit_objects = fit_input
+    else:
+        raise ValueError(
+            "Invalid input. Please provide a valid stock name and fit or a dictionary mapping stock names to fits.")
+
+    param_map = {
+        "power_law": ["alpha"],
+        "lognormal": ["mu", "sigma"],
+        "exponential": ["Lambda"],
+        "truncated_power_law": ["alpha", "Lambda", "xmin"],
+        "stretched_exponential": ["Lambda", "beta"],
+        "lognormal_positive": ["mu", "sigma"],
+    }
+
+    def get_params(fit, dist) -> List:
+        """Utility to fetch distribution parameters and handle errors."""
+        try:
+            return [getattr(fit, dist).__getattribute__(param) for param in param_map[dist]]
+        except AttributeError:
+            return [np.nan] * len(param_map[dist])
+
+    results = []
+    for stock_name, fit in fit_objects.items():
+        base_result = {"Stock": stock_name, "Alternative Distribution": distribution}
+        params = get_params(fit, distribution)
+        base_result.update(zip(param_map[distribution], params))
+        base_result.update(
+            {
+                "xmin": fit.xmin,
+                "Power Law Alpha": fit.power_law.alpha,
+                "KS Distance (Power Law)": fit.power_law.D,
+                "KS Distance (" + distribution + ")": getattr(fit, distribution).D
+                if hasattr(fit, distribution)
+                else np.nan,
+                "Loglikelihood Ratio": fit.distribution_compare("power_law", distribution, normalized_ratio=True)[0],
+                "p-value": fit.distribution_compare("power_law", distribution, normalized_ratio=True)[1],
+            }
+        )
+        results.append(base_result)
+
+    return pd.DataFrame(results)
+
+
+def plot_distributions(stock_name, data):
     """
     Plots PDF, CDF, and CCDF for given data.
 
@@ -107,18 +269,34 @@ def plot_distributions(data, stock_name):
     plt.show()
 
 
-def plot_fit_objects(fit_objects_dict: Dict[str, Fit]) -> None:
+
+def plot_fit_objects(fit_input: Union[Dict[str, Fit], Tuple[str, Fit]]) -> None:
     """
     Plot the Empirical CCDF, Power Law Fit, and comparison between Power Law,
     Exponential, and Lognormal fits for the given stock fit objects.
 
-    :param fit_objects_dict: A dictionary mapping stock names to their respective Fit objects.
+    :param fit_input: Either a tuple containing a single stock name and its Fit object or a dictionary mapping stock names to their respective Fit objects.
     :return: None, but will display the plots.
     """
 
-    fit_objects = fit_objects_dict
+    # Check input type and adjust accordingly
+    if isinstance(fit_input, tuple) and len(fit_input) == 2:
+        stock_name, fit = fit_input
+        fit_objects = {stock_name: fit}
+    elif isinstance(fit_input, dict):
+        fit_objects = fit_input
+    else:
+        raise ValueError(
+            "Invalid input. Please provide a valid stock name and fit or a dictionary mapping stock names to fits.")
+
     num_stocks = len(fit_objects)
-    fig, axs = plt.subplots(3, num_stocks, figsize=(18, 14))
+
+    # Adjust plotting based on number of stocks
+    if num_stocks == 1:
+        fig, axs = plt.subplots(3, 1, figsize=(6, 14))
+        axs = np.expand_dims(axs, axis=1)  # Convert the 1D array to 2D
+    else:
+        fig, axs = plt.subplots(3, num_stocks, figsize=(18, 14))
 
     # Determine global minimum and maximum for all empirical_data
     all_x = []
@@ -177,92 +355,4 @@ def plot_fit_objects(fit_objects_dict: Dict[str, Fit]) -> None:
     plt.show()
 
 
-def get_fitting_params(fit_objects: Dict[str, Fit], distribution: str) -> pd.DataFrame:
-    """
-    Retrieves fitting parameters for a specified distribution across stocks.
 
-    :param fit_objects: Dictionary of stock names to Fit objects.
-    ::param distribution: Alternative distribution name for comparison. Supported distributions are:
-    'power_law', 'lognormal', 'exponential','truncated_power_law', 'stretched_exponential',
-    and 'lognormal_positive'.
-
-    :return: DataFrame containing fitting parameters for the given distribution.
-    """
-
-    param_map = {
-        "power_law": ["alpha"],
-        "lognormal": ["mu", "sigma"],
-        "exponential": ["Lambda"],
-        "truncated_power_law": ["alpha", "Lambda", "xmin"],
-        "stretched_exponential": ["Lambda", "beta"],
-        "lognormal_positive": ["mu", "sigma"],
-    }
-
-    def get_params(fit, dist) -> List:
-        """Utility to fetch distribution parameters and handle errors."""
-        try:
-            return [getattr(fit, dist).__getattribute__(param) for param in param_map[dist]]
-        except AttributeError:
-            return [np.nan] * len(param_map[dist])
-
-    results = []
-    for stock_name, fit in fit_objects.items():
-        base_result = {"Stock": stock_name, "Distribution": distribution}
-        params = get_params(fit, distribution)
-        base_result.update(zip(param_map[distribution], params))
-        base_result.update(
-            {"xmin": fit.xmin, "KS Distance": getattr(fit, distribution).D if hasattr(fit, distribution) else np.nan}
-        )
-        results.append(base_result)
-
-    return pd.DataFrame(results)
-
-
-def distribution_compare(fit_objects: Dict[str, Fit], distribution: str) -> pd.DataFrame:
-    """
-    Compares power law distribution to a specified alternative distribution across stocks.
-
-    :param fit_objects: Dictionary of stock names to Fit objects.
-    :param distribution: Alternative distribution name for comparison. Supported distributions are:
-    'power_law', 'lognormal', 'exponential','truncated_power_law', 'stretched_exponential',
-    and 'lognormal_positive'.
-
-    :return: DataFrame containing comparison results.
-    """
-
-    param_map = {
-        "power_law": ["alpha"],
-        "lognormal": ["mu", "sigma"],
-        "exponential": ["Lambda"],
-        "truncated_power_law": ["alpha", "Lambda", "xmin"],
-        "stretched_exponential": ["Lambda", "beta"],
-        "lognormal_positive": ["mu", "sigma"],
-    }
-
-    def get_params(fit, dist) -> List:
-        """Utility to fetch distribution parameters and handle errors."""
-        try:
-            return [getattr(fit, dist).__getattribute__(param) for param in param_map[dist]]
-        except AttributeError:
-            return [np.nan] * len(param_map[dist])
-
-    results = []
-    for stock_name, fit in fit_objects.items():
-        base_result = {"Stock": stock_name, "Alternative Distribution": distribution}
-        params = get_params(fit, distribution)
-        base_result.update(zip(param_map[distribution], params))
-        base_result.update(
-            {
-                "xmin": fit.xmin,
-                "Power Law Alpha": fit.power_law.alpha,
-                "KS Distance (Power Law)": fit.power_law.D,
-                "KS Distance (" + distribution + ")": getattr(fit, distribution).D
-                if hasattr(fit, distribution)
-                else np.nan,
-                "Loglikelihood Ratio": fit.distribution_compare("power_law", distribution, normalized_ratio=True)[0],
-                "p-value": fit.distribution_compare("power_law", distribution, normalized_ratio=True)[1],
-            }
-        )
-        results.append(base_result)
-
-    return pd.DataFrame(results)

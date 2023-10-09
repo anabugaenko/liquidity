@@ -109,6 +109,8 @@ def get_goodness_of_fit(
     Returns:
     - float: The Kolmogorov-Smirnov statistic, D.
     - float: The BIC.
+
+
     - float: MAPE metric.
     - float: The adjusted R-squared value.
     """

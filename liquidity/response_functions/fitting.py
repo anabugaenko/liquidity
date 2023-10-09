@@ -1,11 +1,14 @@
+import warnings
+
 import numpy as np
 import pandas as pd
-from scipy.optimize import curve_fit, least_squares
+from scipy.optimize import curve_fit, least_squares, minimize
 
 from powerlaw_function import Fit
 
+from liquidity.util.goodness_of_fit import loglikelihoods
 from liquidity.util.utils import bin_data_into_quantiles, get_agg_features
-from typing import List
+from typing import List, Callable, Union, Tuple
 
 
 class RescaledFormFitResult:
@@ -28,14 +31,14 @@ def scaling_function(x: float, alpha: float, beta: float) -> float:
     Define the Sigmoidal function F(x) as mentioned in the paper.
 
     Parameters:
-    - x (float): The value for which we are calculating the function.
+    - x (float): The unormalised imbalance values for which we are calculating the function.
     - alpha (float): Represents the small x growth power.
     - beta (float): Represents the large x growth power.
 
     Returns:
     - float: The result of the scale function for given x, alpha, and beta.
     """
-    return x / (1 + abs(x) ** alpha) ** (beta / alpha)
+    return x / np.power(1 + np.power(abs(x), alpha), beta /alpha)
 
 
 def scaling_form(orderflow_imbalance, chi, kappa, alpha, beta, gamma):
@@ -102,11 +105,13 @@ def fit_scaling_form(data_all, y_reflect=False, f_scale=0.2, verbose=False):
     fit_func = scaling_form if not y_reflect else scaling_form_reflect
 
     try:
+        x_values = np.transpose(data_all.iloc[:, :2].to_numpy())
+        y_values = data_all.iloc[:, 2].to_numpy()
         initial_guess = [0.5, 0.5, 1.0, 1.0, 1.0]
         popt, pcov = curve_fit(
-            fit_func,
-            np.transpose(data_all.iloc[:, :2].to_numpy()),
-            data_all.iloc[:, 2].to_numpy(),
+            f=fit_func,
+            xdata=x_values,
+            ydata=y_values,
             p0=initial_guess,
             bounds=(0, np.inf),
             loss="soft_l1",
@@ -117,7 +122,10 @@ def fit_scaling_form(data_all, y_reflect=False, f_scale=0.2, verbose=False):
             # https://stackoverflow.com/questions/52275542/how-to-calculate-the-standard-error-from-a-variance-covariance-matrix
             print(f"standard deviations: {np.sqrt(np.diag(pcov))} \n")
 
-        return (popt, pcov, fit_func)
+        fitted_values = scaling_form(x_values, *popt)
+        mape = np.mean(np.abs((y_values - fitted_values) / y_values)) * 100
+
+        return popt, mape, fit_func
     except RuntimeError:
         print("Optimal parameters not found: The maximum number of function evaluations is exceeded")
         return None, None, None
@@ -178,13 +186,26 @@ def compute_RN_QN(features_df, alpha, beta, fitting_method="MLE"):
 
 def fit_scaling_function(df, x_col="vol_imbalance", y_col="R", y_reflect=False, verbose=False):
     x_values = -df[x_col].values if y_reflect else df[x_col].values
-    popt, pcov = curve_fit(scaling_function, x_values, df[y_col].values, bounds=(0, np.inf), loss="soft_l1")
+    y_values = df[y_col].values
+    initial_guess = [0, 0]
+    popt, pcov = curve_fit(
+                f=scaling_function,
+                xdata=x_values,
+                ydata=y_values,
+                p0=initial_guess,
+                bounds=(0, np.inf),
+                loss="soft_l1",
+                f_scale=0.2,
+                 )
 
     if verbose:
         print(f"parameters found: {popt}")
         print(f"standard deviations: {np.sqrt(np.diag(pcov))} \n")
 
-    return popt, pcov, scaling_function
+    fitted_values = scaling_function(x_values, *popt)
+    mape = np.mean(np.abs((y_values - fitted_values) / y_values)) * 100
+
+    return popt, mape, scaling_function
 
 
 def rescale_data(df: pd.DataFrame, popt, imbalance_col="vol_imbalance") -> pd.DataFrame:
@@ -218,6 +239,7 @@ def renormalise(df: pd.DataFrame, params, durations: List = [5, 10, 20, 50, 100]
     """
 
     Used for renormalisation and collapse at different scales.
+    Hope returns similar params at different scales after renormalisation
     """
     chi, kappa, alpha, beta, gamma = params
     fit_param = {}
@@ -241,3 +263,84 @@ def renormalise(df: pd.DataFrame, params, durations: List = [5, 10, 20, 50, 100]
             print(f"Failed to fit for lag {T}")
 
     return fit_param
+
+
+def mle_fit(
+    x_values: List[float], y_values: List[float], function: Callable
+) -> Union[None, Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    """
+    Fits a function or curve to the data using the maximum likelihood estimation (MLE) method.
+
+    Parameters:
+    x_values (List[float]): The independent variable values.
+    y_values (List[float]): The dependent variable values.
+    function (Callable): The function to fit.
+
+    Returns:
+    np.ndarray: The residuals.
+    np.ndarray: The optimized parameters.
+    np.ndarray: The fitted values.
+    """
+    num_params = function.__code__.co_argcount - 1  # Exclude the 'x' parameter
+    initial_guess = [0] * num_params  # Initialize all parameters with 0.1 for MLE
+
+    # Compute negative loglikelihood
+    def _negative_loglikelihood(params: np.ndarray, x_values: np.ndarray, y_values: np.ndarray) -> float:
+        model_predictions = function(x_values, *params)
+        residuals = y_values - model_predictions
+
+        loglikelihood_values = loglikelihoods(residuals)
+
+        return -np.sum(loglikelihood_values)
+
+    try:
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            result = minimize(_negative_loglikelihood, initial_guess, args=(x_values, y_values), method="Nelder-Mead")
+            params = result.x
+
+        fitted_values = function(x_values, *params)
+        residuals = y_values - fitted_values
+        return residuals, params, fitted_values
+    except Exception as e:
+        print(f"Failed to fit curve for function {function.__name__}. Error: {e}")
+        return None
+
+
+def least_squares_fit(
+    x_values: List[float], y_values: List[float], function: Callable
+) -> Union[Tuple[None, None], Tuple[np.ndarray, float]]:
+    """
+    Fits a function or curve to the data using the least squares method.
+
+    Parameters:
+    x_values (List[float]): The independent variable values.
+    y_values (List[float]): The dependent variable values.
+    function (Callable): The function to fit.
+
+    Returns:
+    np.ndarray: The residuals.
+    np.ndarray: The optimized parameters.
+    np.ndarray: The fitted values.
+
+    """
+    num_params = function.__code__.co_argcount - 1  # Exclude the 'x' parameter
+    initial_guess = [1] * num_params  # Initialize all parameters with 0.5 for least_squares
+
+    def _residuals(params: np.ndarray, x_values: np.ndarray, y_values: np.ndarray) -> np.ndarray:
+        model_predictions = function(x_values, *params)
+        return y_values - model_predictions
+
+    try:
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            result = least_squares(_residuals, initial_guess, args=(x_values, y_values), loss="soft_l1")
+            params = result.x
+
+        fitted_values = function(x_values, *params)
+        mape = np.mean(np.abs((y_values - fitted_values) / y_values)) * 100
+
+        return params, mape
+    except RuntimeError as e:
+        print(f"Failed to fit curve for function {function.__name__}. Error: {e}")
+        return None, None
