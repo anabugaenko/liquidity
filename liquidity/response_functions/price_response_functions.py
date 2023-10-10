@@ -52,9 +52,10 @@ def _conditional_aggregate_impact(df_: pd.DataFrame, T: int, response_column: st
     df_agg = df_.groupby(df_.index // T).agg(
         event_timestamp=("event_timestamp", "first"),
         midprice=("midprice", "first"),
+        sign=("sign", "first"),
+        signed_volume=("signed_volume", "first"),
         vol_imbalance=("signed_volume", "sum"),
         sign_imbalance=("sign", "sum"),
-        sign=("sign", "first"),
         daily_R1=("daily_R1", "first"),
         daily_vol=("daily_vol", "first"),
         daily_num=("daily_num", "first"),

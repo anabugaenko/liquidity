@@ -89,7 +89,7 @@ def compute_acfs(filename: str,
 def compute_hurst_exponent(random_variate: str,
                            stock: str,
                            data: pd.Series,
-                           method: str = 'standard') -> Tuple[Union[None, Dict[str, Any]], Any]:
+                           method: str = 'standard', **kwargs) -> Tuple[Union[None, Dict[str, Any]], Any]:
     """
     Computes the Hurst exponent for a given stock's data using specified methods.
 
@@ -105,9 +105,9 @@ def compute_hurst_exponent(random_variate: str,
     """
     # Computing the Hurst exponent based on the method
     if method == 'standard':
-        hurst_val, fit = standard_hurst(data)
+        hurst_val, fit = standard_hurst(data, **kwargs)
     elif method == 'generalized':
-        hurst_val, fit = generalized_hurst(data)
+        hurst_val, fit = generalized_hurst(data, **kwargs)
     else:
         raise ValueError("Invalid method provided. Choose either 'standard' or 'generalized'.")
 
@@ -124,10 +124,10 @@ def compute_hurst_exponent(random_variate: str,
     return None, None
 
 
-def get_acf_params(stock, data) -> Tuple[Union[None, Dict[str, Any]], Any]:
+def get_acf_params(stock, data, **kwargs) -> Tuple[Union[None, Dict[str, Any]], Any]:
     """
     Fits a power law to the autocorrelation function (ACF) of a stock's data
-    to extract the long-memory parameter γ (gamma/gramma).
+    to extract the long-memory parameter γ (gamma).
 
     A process is characterized as long-memory if, as \( x \to \infty \):
 
@@ -144,7 +144,7 @@ def get_acf_params(stock, data) -> Tuple[Union[None, Dict[str, Any]], Any]:
     - Fitted power law object, or None.
     """
 
-    fit = Fit(data)  # Fitting powerlaw to the DataFrame passed here
+    fit = Fit(data,  **kwargs)  # Fitting powerlaw to the DataFrame passed here
     fit_dict = fit.powerlaw.to_dictionary()
 
     if fit_dict.get("function_name") == "powerlaw":
@@ -154,11 +154,38 @@ def get_acf_params(stock, data) -> Tuple[Union[None, Dict[str, Any]], Any]:
     return None, None
 
 
+def construct_xy(sample: pd.Series, name: str) -> pd.DataFrame:
+    """
+    Constructs a DataFrame with x and y values for plotting Autocorrelation Function (ACF) from a given sample series.
+
+    The function creates x-values based on the index range of the sample, starting from 1.
+    The y-values are directly taken from the provided sample series.
+
+    :param sample: A pandas Series representing y-values (e.g., ACF values).
+    :param name: A string representing the name of the sample (e.g., stock name) for error reporting.
+
+    :return: A pandas DataFrame with columns 'x_values' and 'y_values' ready for plotting.
+
+    :raises ValueError: If the size of the given sample does not match the constructed y-values.
+    """
+
+    y_values = list(sample)
+    if len(sample) != len(y_values):
+        raise ValueError(f"Sample sizes mismatch for {name}.")
+
+    xy_df = pd.DataFrame({
+        'x_values': range(1, len(y_values) + 1),
+        'y_values': y_values
+    })
+
+    return xy_df
+
+
+
 def plot_acf_difference(
         stock_name: Union[str, Dict[str, List[float]]],
         linear_acfs: Dict[str, List[float]],
         nonlinear_acfs: Dict[str, List[float]],
-        acf_range: int = 1001
 ) -> None:
     """
     Plot and compare the difference between linear and nonlinear ACF for a specific stock
@@ -167,11 +194,9 @@ def plot_acf_difference(
     :param stock_name: Name of the stock or a dictionary of multiple stock data.
     :param linear_acfs: Linear ACFs data.
     :param nonlinear_acfs: Nonlinear ACFs data.
-    :param acf_range: Range of ACF computation.
 
     :return: None
     """
-
     if isinstance(stock_name, str):
         stocks = [stock_name]
     else:
@@ -204,7 +229,7 @@ def plot_acf_difference(
         plt.legend(frameon=False)
         plt.grid(False)
 
-        plt.suptitle(f"Linear vs nonlinear ACF across lags for {stock} MO Returns")
+        plt.suptitle(f"Linear vs nonlinear ACF across lags for {stock}")
         plt.show()
 
         print(f"{stock} Max difference: {max(difference)}")

@@ -21,7 +21,6 @@ def compute_returns(df, pct=False, remove_first=True):
     """
     # Copy of the DataFrame to work on
     df = df.copy()
-
     if type(df["event_timestamp"].iloc[0]) != pd.Timestamp:
         df.loc[:, "event_timestamp"] = df["event_timestamp"].apply(lambda x: pd.Timestamp(x))
     if remove_first:
@@ -65,7 +64,7 @@ def remove_first_daily_prices(df: pd.DataFrame) -> pd.DataFrame:
 
 def bin_data_into_quantiles(df, x_col="vol_imbalance", y_col="R", q=100, duplicates="raise"):
     """
-    3/9/23 This is majorly used.
+    Returns binned series.
     """
     binned_x = pd.qcut(df[x_col], q=q, labels=False, retbins=True, duplicates=duplicates)
     binned_x = binned_x[0]
@@ -91,7 +90,7 @@ def get_agg_features(df: pd.DataFrame, durations: List[int], **kwargs) -> pd.Dat
     df["date"] = df["event_timestamp"].apply(lambda x: x.date())
     results_ = []
     for i, T in enumerate(durations):
-        lag_data = compute_conditional_aggregate_impact(df, T=T, normalise=True, **kwargs)
+        lag_data = compute_conditional_aggregate_impact(df, T=T, **kwargs)
         lag_data["R"] = lag_data[f"R{T}"]
         lag_data = lag_data.drop(columns=f"R{T}")
         lag_data["T"] = T
