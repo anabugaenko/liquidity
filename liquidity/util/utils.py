@@ -37,8 +37,6 @@ def add_order_signs(df_: pd.DataFrame) -> pd.DataFrame:
 #     df["norm_returns"] = abs(df["returns"] / std)
 #     df["pct_returns"] = df["midprice"].pct_change()
 #     df["log_returns"] = np.log(df["midprice"]) - np.log(df["midprice"].shift(1))
-#     df["cumsum_returns"] = df["returns"].cumsum()
-#     df["cumprod_returns"] = (1 + df["returns"]).cumprod()
 #
 #     return df
 def compute_returns(df: pd.DataFrame, remove_first: bool = True) -> pd.DataFrame:
@@ -64,8 +62,7 @@ def compute_returns(df: pd.DataFrame, remove_first: bool = True) -> pd.DataFrame
     df["returns"] = df["midprice"].diff()
 
     # Percentage (relative) returns
-    # Using numpy's pct_change equivalent for robustness
-    #df["pct_returns"] = (df["midprice"] / df["midprice"].shift(1)) - 1
+    #df["pct_returns"] = (df["midprice"] / df["midprice"].shift(1)) - 1 # using numpy's pct_change equivalent for robustness
     df["pct_returns"] = df["midprice"].pct_change()
 
     # Remove any NaN or infinite values from 'returns'
@@ -78,10 +75,6 @@ def compute_returns(df: pd.DataFrame, remove_first: bool = True) -> pd.DataFrame
 
     # Log returns
     df["log_returns"] = np.log(df["midprice"]) - np.log(df["midprice"].shift(1))
-
-    # Cumulative returns
-    df["cumsum_returns"] = df["returns"].cumsum()
-    df["cumprod_returns"] = (1 + df["returns"]).cumprod()
 
     return df
 
