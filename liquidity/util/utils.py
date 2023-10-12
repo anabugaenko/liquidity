@@ -14,31 +14,6 @@ def add_order_signs(df_: pd.DataFrame) -> pd.DataFrame:
     return df_
 
 
-# def compute_returns(df, remove_first=True):
-#     """
-#     Add percentage returns or absolute normalised (by its volatility) returns
-#     to pd.DataFrame of order type time series.
-#     """
-#     # Copy of the DataFrame to work on
-#     df = df.copy()
-#     if type(df["event_timestamp"].iloc[0]) != pd.Timestamp:
-#         df.loc[:, "event_timestamp"] = df["event_timestamp"].apply(lambda x: pd.Timestamp(x))
-#     if remove_first:
-#         df = remove_first_daily_prices(df)
-#
-#     #  Returns or percentage (relative) returns.
-#     df.loc[:, "returns"] = df["midprice"].diff()
-#
-#     # Remove any NaN or infinite values
-#     df = df[~df["returns"].isin([np.nan, np.inf, -np.inf])]
-#
-#     # Other representation of returns
-#     std = np.std(df["returns"])
-#     df["norm_returns"] = abs(df["returns"] / std)
-#     df["pct_returns"] = df["midprice"].pct_change()
-#     df["log_returns"] = np.log(df["midprice"]) - np.log(df["midprice"].shift(1))
-#
-#     return df
 def compute_returns(df: pd.DataFrame, remove_first: bool = True) -> pd.DataFrame:
     """
     Compute various representations of returns for a given DataFrame.
@@ -62,21 +37,25 @@ def compute_returns(df: pd.DataFrame, remove_first: bool = True) -> pd.DataFrame
     df["returns"] = df["midprice"].diff()
 
     # Percentage (relative) returns
-    #df["pct_returns"] = (df["midprice"] / df["midprice"].shift(1)) - 1 # using numpy's pct_change equivalent for robustness
+    # df["pct_returns"] = (df["midprice"] / df["midprice"].shift(1)) - 1 # using numpy's pct_change equivalent for robustness
     df["pct_returns"] = df["midprice"].pct_change()
 
+
+    # Other representations of returns
     # Remove any NaN or infinite values from 'returns'
     df = df[~df["returns"].isin([np.nan, np.inf, -np.inf])]
 
-    # Other representations of returns
-    # Normalised returns (normalised by its absolute (volatility) value)
-    std = np.std(df["returns"])
-    df["norm_returns"] = abs(df["returns"] / std)
+    # Time-varying variance derived directly from returns
+    df["variance"] = df["returns"] ** 2
+
+    # Volatility (return magnitudes - time-varying standard deviation derived from variance)
+    df["volatility"] = np.sqrt(df["variance"])
 
     # Log returns
     df["log_returns"] = np.log(df["midprice"]) - np.log(df["midprice"].shift(1))
 
     return df
+
 
 
 # Placeholder for the remove_first_daily_prices function as it was not provided

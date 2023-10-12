@@ -1,25 +1,22 @@
 import os
 import pickle
+import pandas as pd
 import matplotlib.pyplot as plt
-
 from typing import Tuple, Dict, Any, List, Union
 
-import pandas as pd
 from powerlaw_function import Fit
-
-from hurst_exponent.hurst_exponent import standard_hurst, generalized_hurst
-from hurst_exponent.acf import linear_acf, nonlinear_acf
-
-
 from multiprocessing import Pool, cpu_count
+
+from hurst_exponent.acf import linear_acf, nonlinear_acf
+from hurst_exponent.hurst_exponent import standard_hurst, generalized_hurst
+
 
 # Helper functions
 
-# Define a pool worker function outside the main function
+# Define a pool worker function
 def pool_worker(args):
     stock, values, option, acf_range = args
     return compute_acf(stock, values, option=option, acf_range=acf_range)
-
 
 def compute_acf(stock: str,
                 data: Union[float, int],
@@ -43,6 +40,33 @@ def compute_acf(stock: str,
     elif option == "nonlinear":
         result = nonlinear_acf(data, acf_range)
     return stock, result
+
+
+def construct_xy(sample: pd.Series, name: str) -> pd.DataFrame:
+    """
+    Constructs a DataFrame with x and y values for plotting Autocorrelation Function (ACF) from a given sample series.
+
+    The function creates x-values based on the index range of the sample, starting from 1.
+    The y-values are directly taken from the provided sample series.
+
+    :param sample: A pandas Series representing y-values (e.g., ACF values).
+    :param name: A string representing the name of the sample (e.g., stock name) for error reporting.
+
+    :return: A pandas DataFrame with columns 'x_values' and 'y_values' ready for plotting.
+
+    :raises ValueError: If the size of the given sample does not match the constructed y-values.
+    """
+
+    y_values = list(sample)
+    if len(sample) != len(y_values):
+        raise ValueError(f"Sample sizes mismatch for {name}.")
+
+    xy_df = pd.DataFrame({
+        'x_values': range(1, len(y_values) + 1),
+        'y_values': y_values
+    })
+
+    return xy_df
 
 
 def compute_acfs(filename: str,
@@ -152,34 +176,6 @@ def get_acf_params(stock, data, **kwargs) -> Tuple[Union[None, Dict[str, Any]], 
         fit_dict.update({"gamma": gamma, "stock": stock})  # rename alpha to gamma
         return fit_dict, fit
     return None, None
-
-
-def construct_xy(sample: pd.Series, name: str) -> pd.DataFrame:
-    """
-    Constructs a DataFrame with x and y values for plotting Autocorrelation Function (ACF) from a given sample series.
-
-    The function creates x-values based on the index range of the sample, starting from 1.
-    The y-values are directly taken from the provided sample series.
-
-    :param sample: A pandas Series representing y-values (e.g., ACF values).
-    :param name: A string representing the name of the sample (e.g., stock name) for error reporting.
-
-    :return: A pandas DataFrame with columns 'x_values' and 'y_values' ready for plotting.
-
-    :raises ValueError: If the size of the given sample does not match the constructed y-values.
-    """
-
-    y_values = list(sample)
-    if len(sample) != len(y_values):
-        raise ValueError(f"Sample sizes mismatch for {name}.")
-
-    xy_df = pd.DataFrame({
-        'x_values': range(1, len(y_values) + 1),
-        'y_values': y_values
-    })
-
-    return xy_df
-
 
 
 def plot_acf_difference(

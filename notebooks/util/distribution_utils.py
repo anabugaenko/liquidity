@@ -2,18 +2,16 @@ import os
 import pickle
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Union, Tuple, Optional
-
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 import matplotlib.gridspec as gridspec
+from typing import Dict, List, Union, Tuple, Optional
 
 import powerlaw
 from powerlaw import Fit, plot_pdf, plot_cdf, plot_ccdf
 
 
 # Helper functions
-
 
 def fit_powerlaw(
         stock_data: Union[str, Dict[str, list]],
@@ -328,6 +326,3 @@ def plot_fit_objects(fit_input: Union[Dict[str, Fit], Tuple[str, Fit]]) -> None:
 
     plt.tight_layout()
     plt.show()
-
-
-
