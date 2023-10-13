@@ -57,7 +57,6 @@ def compute_returns(df: pd.DataFrame, remove_first: bool = True) -> pd.DataFrame
     return df
 
 
-
 # Placeholder for the remove_first_daily_prices function as it was not provided
 def remove_first_daily_prices(df: pd.DataFrame) -> pd.DataFrame:
     # Your implementation here

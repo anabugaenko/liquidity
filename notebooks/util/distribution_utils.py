@@ -13,48 +13,64 @@ from powerlaw import Fit, plot_pdf, plot_cdf, plot_ccdf
 
 # Helper functions
 
-def fit_powerlaw(
-        stock_data: Union[str, Dict[str, list]],
-        series_data: Union[list, None] = None,
-        filename: Optional[str] = None
-) -> Dict:
-    # Determine stocks to series mapping
-    if isinstance(stock_data, str) and series_data is not None:
-        stocks_to_series = {stock_data: series_data}
-    elif isinstance(stock_data, dict):
-        stocks_to_series = stock_data
-    else:
-        raise ValueError(
-            "Invalid input. Please provide a valid stock name and "
-            "series or a dictionary mapping stock names to series."
-            )
 
-    # Fit the series for each stock
+from typing import Dict, Union, List, Optional
+
+def fit_powerlaw(
+    data_dict: Union[str, Dict[str, List[float]]],
+    series: Union[List[float], None] = None,
+    filename: Optional[str] = None
+) -> Dict:
+    """
+    Fits a power law to the provided data.
+
+    Parameters:
+    - data_dict (Union[str, Dict[str, List[float]]]): Either a string label (e.g. stock name) or a dictionary mapping
+                                                      labels to data series.
+    - series (Union[List[float], None], optional): Data series if a single label is provided. Defaults to None.
+    - filename (str, optional): Path to save serialized fit objects. If provided, saves the data. Defaults to None.
+
+    Returns:
+    - Dict: Dictionary mapping labels to fit results.
+
+    Notes:
+    - If providing a single label and series, use the `data_dict` as a string and provide the `series`.
+    - If providing multiple labels and their series, use the `data_dict` as a dictionary mapping labels to series.
+    """
+    # Determine mapping from labels to series
+    if isinstance(data_dict, str) and series is not None:
+        labels_to_series = {data_dict: series}
+    elif isinstance(data_dict, dict):
+        labels_to_series = data_dict
+    else:
+        raise ValueError("Invalid input. Please provide a valid label and series or a dictionary mapping labels to series.")
+
+    # Fit the series for each label
     fit_results = {}
-    for stock_name, series in stocks_to_series.items():
-        fit = Fit(series.dropna(), discrete=False)
-        fit_results[stock_name] = fit
+    for label, s in labels_to_series.items():
+        fit = Fit(s.dropna(), discrete=False)
+        fit_results[label] = fit
 
     # Serialize the fit objects
     serialized_fit_objects = {}
-    for stock_name, fit in fit_results.items():
+    for label, fit in fit_results.items():
         data = {"data": fit.data.tolist(), "xmin": fit.xmin, "xmax": fit.xmax}
-        serialized_fit_objects[stock_name] = data
+        serialized_fit_objects[label] = data
 
-    # Save the serialized fit objects to a file if a filename is provided
+    # Save to a file if filename is provided
     if filename:
-        # Check if directories in the path exist; if not, create them
         directory = os.path.dirname(filename)
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        if os.path.exists(filename):
-            print(f"File {filename} already exists. Skipping.")
-        else:
+        if not os.path.exists(filename):
             with open(filename, "wb") as f:
                 pickle.dump(serialized_fit_objects, f)
+        else:
+            print(f"File {filename} already exists. Skipping.")
 
     return fit_results
+
 
 
 def load_fit_objects(filename):
