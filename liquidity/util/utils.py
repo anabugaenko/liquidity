@@ -13,7 +13,7 @@ def add_order_signs(df_: pd.DataFrame) -> pd.DataFrame:
     df_["sign"] = df_.apply(lambda row: _ennumerate_sides(row), axis=1)
     return df_
 
-
+# TODO: move to price_response_finctons
 def compute_returns(df: pd.DataFrame, remove_first: bool = True) -> pd.DataFrame:
     """
     Compute various representations of returns for a given DataFrame.
@@ -55,6 +55,25 @@ def compute_returns(df: pd.DataFrame, remove_first: bool = True) -> pd.DataFrame
     df["log_returns"] = np.log(df["midprice"]) - np.log(df["midprice"].shift(1))
 
     return df
+
+# TODO: move to price_response_finctons
+# FIXME: rename to compute_aggregate_features
+def get_agg_features(df: pd.DataFrame, durations: List[int], **kwargs) -> pd.DataFrame:
+    df["event_timestamp"] = df["event_timestamp"].apply(lambda x: pd.Timestamp(x))
+    df["date"] = df["event_timestamp"].apply(lambda x: x.date())
+    results_ = []
+    for i, T in enumerate(durations):
+        lag_data = compute_conditional_aggregate_impact(df, T=T, **kwargs)
+        lag_data["R"] = lag_data[f"R{T}"]
+        lag_data = lag_data.drop(columns=f"R{T}")
+        lag_data["T"] = T
+        results_.append(lag_data)
+
+    return pd.concat(results_)
+
+# TODO: move to price_response_finctons
+def get_orderbook_states(raw_orderbook_df: pd.DataFrame):
+    pass
 
 
 # Placeholder for the remove_first_daily_prices function as it was not provided
@@ -104,16 +123,3 @@ def bin_data_into_quantiles(df, x_col="vol_imbalance", y_col="R", q=100, duplica
 
     return pd.concat([x_binned, r_binned, y_binned], axis=1).reset_index(drop=True)
 
-
-def get_agg_features(df: pd.DataFrame, durations: List[int], **kwargs) -> pd.DataFrame:
-    df["event_timestamp"] = df["event_timestamp"].apply(lambda x: pd.Timestamp(x))
-    df["date"] = df["event_timestamp"].apply(lambda x: x.date())
-    results_ = []
-    for i, T in enumerate(durations):
-        lag_data = compute_conditional_aggregate_impact(df, T=T, **kwargs)
-        lag_data["R"] = lag_data[f"R{T}"]
-        lag_data = lag_data.drop(columns=f"R{T}")
-        lag_data["T"] = T
-        results_.append(lag_data)
-
-    return pd.concat(results_)

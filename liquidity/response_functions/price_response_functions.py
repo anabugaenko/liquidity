@@ -9,6 +9,10 @@ def add_price_response(df_: pd.DataFrame, response_column: str = "R1") -> pd.Dat
     df_[response_column] = df_["midprice_change"] * df_["sign"]
     return df_
 
+def normalise_price_response(df: pd.DataFrame, response_column: str) -> pd.DataFrame:
+    df[response_column] = df[response_column] / df["daily_R1"] * df["daily_R1"].mean()
+    return df
+
 
 def _price_response_function(df_: pd.DataFrame, lag: int = 1, log_prices=False) -> pd.DataFrame:
     """
@@ -88,21 +92,6 @@ def add_daily_features(df_: pd.DataFrame, response_column: str = "R1") -> pd.Dat
     return df_
 
 
-def normalise_price_response(df: pd.DataFrame, response_column: str) -> pd.DataFrame:
-    df[response_column] = df[response_column] / df["daily_R1"] * df["daily_R1"].mean()
-    return df
-
-
-def normalise_axis(df: pd.DataFrame) -> pd.DataFrame:
-    if "vol_imbalance" in df.columns:
-        df["vol_imbalance"] = df["vol_imbalance"] / df["daily_vol"]
-    if "sign_imbalance" in df.columns:
-        df["sign_imbalance"] = df["sign_imbalance"] / df["daily_num"]
-    if "R" in df.columns:
-        df["R"] = df["R"] / df["daily_R1"]
-    return df
-
-
 def compute_price_response(
     df: pd.DataFrame, lag: int = 1, normalise: bool = False, remove_outliers: bool = True, log_prices=False
 ) -> pd.DataFrame:
@@ -145,6 +134,7 @@ def compute_conditional_aggregate_impact(
     return data
 
 
+# TODO: move to utils
 def smooth_outliers(
     df: pd.DataFrame, T=None, columns=["vol_imbalance", "sign_imbalance"], std_level=2, remove=False, verbose=False
 ):
@@ -185,6 +175,17 @@ def smooth_outliers(
     return df
 
 
+def normalise_axis(df: pd.DataFrame) -> pd.DataFrame:
+    if "vol_imbalance" in df.columns:
+        df["vol_imbalance"] = df["vol_imbalance"] / df["daily_vol"]
+    if "sign_imbalance" in df.columns:
+        df["sign_imbalance"] = df["sign_imbalance"] / df["daily_num"]
+    if "R" in df.columns:
+        df["R"] = df["R"] / df["daily_R1"]
+    return df
+
+# TODO: move to either utils or orderbook
+# FIXME: rename to rename_orderbook columns
 def rename_columns(df_: pd.DataFrame) -> pd.DataFrame:
     df_columns = df_.columns
 
