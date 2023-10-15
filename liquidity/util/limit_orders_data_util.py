@@ -7,9 +7,9 @@ from liquidity.util.orderbook import (
     select_top_book,
     select_columns,
     shift_prices,
-    select_best_quotes,
+    select_best_quotes, rename_orderbook_columns,
 )
-from liquidity.response_functions.price_response_functions import add_price_response, rename_columns
+from liquidity.response_functions.price_response_functions import add_price_response
 from liquidity.util.trades_data_util import remove_midprice_trades
 
 
@@ -44,7 +44,7 @@ def get_ca_impact(filepath: str, date: str) -> pd.DataFrame:
     df = add_order_signs(df)
     df = select_cancellations(df)
     df = df.drop(["price", "size"], axis=1)
-    df = rename_columns(df)
+    df = rename_orderbook_columns(df)
     df = add_price_response(df, response_column="R1_CA")
     df = normalise_lo_sizes(df)
     return df

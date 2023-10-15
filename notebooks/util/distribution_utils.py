@@ -247,18 +247,20 @@ def plot_distributions(stock_name, data):
     plt.show()
 
 
-def plot_fit_objects(fit_input: Union[Dict[str, Fit], Tuple[str, Fit]]) -> None:
+def plot_fit_objects(fit_input: Union[Dict[str, powerlaw.Fit], Tuple[str, powerlaw.Fit]],
+                     distributions: List[str] = ["power_law", "truncated_power_law", "exponential", "lognormal"]) -> None:
     """
-    Plot the Empirical CCDF, Power Law Fit, and comparison between Power Law,
-    Exponential, and Lognormal fits for the given stock fit objects.
+    Plot the Empirical CCDF, Power Law Fit, and comparison between Power Law
+    and the specified distributions for the given stock fit objects.
 
     :param fit_input: Either a tuple containing a single stock name and its Fit
-     object or a dictionary mapping stock names to their respective Fit objects.
+    object or a dictionary mapping stock names to their respective Fit objects.
+    :param distributions: List of distributions to include in comparison. Supported are:
+    'power_law', 'lognormal', 'exponential'.
 
     :return: None, but will display the plots.
     """
-
-    # Check input type and adjust accordingly
+    # Handle input type and adjust accordingly
     if isinstance(fit_input, tuple) and len(fit_input) == 2:
         stock_name, fit = fit_input
         fit_objects = {stock_name: fit}
@@ -269,75 +271,64 @@ def plot_fit_objects(fit_input: Union[Dict[str, Fit], Tuple[str, Fit]]) -> None:
             "Invalid input. Please provide a valid stock name and fit or a dictionary mapping stock names to fits.")
 
     num_stocks = len(fit_objects)
-
-    # Adjust plotting based on number of stocks
     if num_stocks == 1:
         fig, axs = plt.subplots(3, 1, figsize=(6, 14))
-        axs = np.expand_dims(axs, axis=1)  # Convert the 1D array to 2D
+        axs = np.expand_dims(axs, axis=1)
     else:
         fig, axs = plt.subplots(3, num_stocks, figsize=(18, 14))
 
-    # Determine global minimum and maximum for all empirical_data
-    all_x = []
-    all_y = []
-    for _, fit in fit_objects.items():
-        empirical_data = fit.ccdf()
-        all_x.extend(empirical_data[0])
-        all_y.extend(empirical_data[1])
+    # Color map for different distributions
+    # Color map for different distributions
+    color_map = {
+        "power_law": 'g',
+        "truncated_power_law": 'c',
+        "lognormal": 'y',
+        "exponential": 'r',
+        "stretched_exponential": 'm',
+        "lognormal_positive": 'b'
+    }
 
-    xlims = (min(all_x), max(all_x))
-    ylims = (min(all_y), 1)
+    # Legend setup based on distributions
+    legend_elements = [
+        mlines.Line2D([0], [0], color='b', marker='.', linestyle='None', markersize=10, label='Empirical Data')
+    ]
+    for dist in distributions:
+        if dist in color_map:
+            legend_elements.append(
+                mlines.Line2D([0], [0], color=color_map[dist], linestyle='--', markersize=10,
+                              label=dist.replace('_', ' ').capitalize())
+            )
 
     for i, (stock_name, fit) in enumerate(fit_objects.items()):
         x = np.linspace(min(fit.data), max(fit.data), num=1000)
 
-        # Row 1: Empirical CCDF
+        # Empirical CCDF plotting
         empirical_data = fit.ccdf()
         axs[0, i].loglog(empirical_data[0], empirical_data[1], "b.")
-        axs[0, i].set_xlim(xlims)
-        axs[0, i].set_ylim(ylims)
         axs[0, i].set_title(f"{stock_name} - Empirical CCDF")
         axs[0, i].grid(False)
-        if i == 0:
-            axs[0, i].set_ylabel("A", size="large", weight="bold")
 
-        # Row 2: Power Law Fit
+        # Power Law Fit plotting
         y_powerlaw = fit.power_law.ccdf(x)
         axs[1, i].loglog(empirical_data[0], empirical_data[1], "b.")
         axs[1, i].loglog(x, y_powerlaw, "g--")
-        axs[1, i].set_xlim(xlims)
-        axs[1, i].set_ylim(ylims)
         axs[1, i].set_title(f"{stock_name} - Power Law Fit")
         axs[1, i].grid(False)
-        if i == 0:
-            axs[1, i].set_ylabel("B", size="large", weight="bold")
 
-        # Row 3: Comparison (Power Law, Exponential, Lognormal)
-        exponential_fit = Fit(fit.data, discrete=False, xmin=min(fit.data)).exponential
-        y_exp = exponential_fit.ccdf(x)
-
-        lognormal_fit = Fit(fit.data, discrete=False, xmin=min(fit.data)).lognormal
-        y_lognorm = lognormal_fit.ccdf(x)
-
+        # Distributions comparison plotting
         axs[2, i].loglog(empirical_data[0], empirical_data[1], "b.")
-        axs[2, i].loglog(x, y_powerlaw, "g--")
-        axs[2, i].loglog(x, y_exp, "r--")
-        axs[2, i].loglog(x, y_lognorm, "y--")
-        axs[2, i].set_xlim(xlims)
-        axs[2, i].set_ylim(ylims)
-        axs[2, i].set_title(f"{stock_name} - Power Law vs. Others")
+        for dist in distributions:
+            if dist == "power_law":
+                y = fit.power_law.ccdf(x)
+            elif dist == "lognormal":
+                lognormal_fit = powerlaw.Fit(fit.data, discrete=False, xmin=min(fit.data)).lognormal
+                y = lognormal_fit.ccdf(x)
+            elif dist == "exponential":
+                exponential_fit = powerlaw.Fit(fit.data, discrete=False, xmin=min(fit.data)).exponential
+                y = exponential_fit.ccdf(x)
+            axs[2, i].loglog(x, y, color_map[dist] + "--")
+        axs[2, i].set_title(f"{stock_name} - Distributions Comparison")
         axs[2, i].grid(False)
-        if i == 0:
-            axs[2, i].set_ylabel("C", size="large", weight="bold")
-
-        # Legend to the third subplot (without border)
-        legend_elements = [
-            mlines.Line2D([0], [0], color='b', marker='.', linestyle='None', markersize=10, label='Empirical Data'),
-            mlines.Line2D([0], [0], color='g', linestyle='--', markersize=10, label='Power Law'),
-            mlines.Line2D([0], [0], color='r', linestyle='--', markersize=10, label='Exponential'),
-            mlines.Line2D([0], [0], color='y', linestyle='--', markersize=10, label='Lognormal')
-        ]
-
         axs[2, i].legend(handles=legend_elements, loc='upper right', fontsize='small', frameon=False)
 
     plt.tight_layout()

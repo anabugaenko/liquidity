@@ -5,7 +5,8 @@ from scipy.optimize import curve_fit, least_squares
 from powerlaw_function import Fit
 
 from liquidity.response_functions.functional_form import scaling_function, scaling_form, scaling_form_reflect
-from liquidity.util.utils import bin_data_into_quantiles, get_agg_features
+from liquidity.util.utils import bin_data_into_quantiles
+from liquidity.response_functions.features import add_aggregate_features
 from typing import List
 
 
@@ -129,7 +130,7 @@ def compute_shape_parameters(df: pd.DataFrame, durations: List = [5, 10, 20, 50,
     """
     Computes shape parameters Alpha and Beta from known features
     """
-    data_norm = get_agg_features(df, durations)
+    data_norm = add_aggregate_features(df, durations)
     popt, pcov, fit_func = fit_scaling_form(data_norm[["vol_imbalance", "T", "R"]])
     return popt, pcov, fit_func, data_norm
 
@@ -180,7 +181,6 @@ def rescale_data(df: pd.DataFrame, popt, imbalance_col="vol_imbalance") -> pd.Da
 
 def renormalise(df: pd.DataFrame, params, durations, q=31):
     """
-
     Used for renormalisation and collapse at different scales.
     Hope returns similar params at different scales after renormalisation
     """
