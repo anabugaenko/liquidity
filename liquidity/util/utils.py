@@ -141,3 +141,27 @@ def smooth_outliers(
             df[name] = winsorize_queue(s, level=std_level)
 
     return df
+
+
+def normalise_size(df_: pd.DataFrame, size_col_name: str = "size") -> pd.DataFrame:
+    """
+    Normalise trade size by the average volume on the same side best quote.
+    """
+    ask_mean_vol = df_["ask_volume"].mean()
+    bid_mean_vol = df_["bid_volume"].mean()
+
+    def _normalise(row):
+        if row["side"] == "ASK":
+            return row[size_col_name] / ask_mean_vol
+        else:
+            return row[size_col_name] / bid_mean_vol
+
+    df_["norm_size"] = df_.apply(_normalise, axis=1)
+    return df_
+
+
+def add_R1(df_: pd.DataFrame) -> pd.DataFrame:
+    # R(1)
+    df_["midprice_change"] = df_["midprice"].diff().shift(-1).fillna(0)
+    df_["R1"] = df_["midprice_change"] * df_["sign"]
+    return df_

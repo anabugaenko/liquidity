@@ -26,17 +26,13 @@ def _price_response_function(df_: pd.DataFrame, lag: int = 1, log_prices=False) 
 
 
 def compute_price_response(
-    df: pd.DataFrame, lag: int = 1, normalise: bool = False, remove_outliers: bool = True, log_prices=False
+    df: pd.DataFrame, lag: int = 1, normalise: bool = True, remove_outliers: bool = True, log_prices=False
 ) -> pd.DataFrame:
     """
     R(l) interface:  Called when fitting.
     """
-    data = df.copy()
-    if type(data["event_timestamp"].iloc[0]) != pd.Timestamp:
-        data["event_timestamp"] = data["event_timestamp"].apply(lambda x: pd.Timestamp(x))
-    data = rename_orderbook_columns(data)
-    data = add_daily_features(data)
-    data = _price_response_function(data, lag=lag, log_prices=log_prices)
+
+    data = _price_response_function(df, lag=lag, log_prices=log_prices)
     if remove_outliers:
         data = smooth_outliers(data)
     if normalise:

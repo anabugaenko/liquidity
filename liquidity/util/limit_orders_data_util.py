@@ -29,7 +29,6 @@ def get_lo_data(filepath: str, date: str) -> pd.DataFrame:
     df = remove_midprice_orders(df)
     df = add_order_signs(df)
     df = select_lo_inserts(df)
-    df = normalise_lo_sizes(df)
     return df
 
 
@@ -74,20 +73,6 @@ def select_lo_inserts(df_: pd.DataFrame) -> pd.DataFrame:
     mask2 = mask2 & (df_["price_changing"] == True)
 
     return df_[mask1 | mask2]
-
-
-def normalise_lo_sizes(df_: pd.DataFrame) -> pd.DataFrame:
-    ask_mean_size = df_[df_["side"] == "ASK"]["size"].mean()
-    bid_mean_size = df_[df_["side"] == "BID"]["size"].mean()
-
-    def _normalise(row):
-        if row["side"] == "ASK":
-            return row["size"] / ask_mean_size
-        else:
-            return row["size"] / bid_mean_size
-
-    df_["norm_size"] = df_.apply(_normalise, axis=1)
-    return df_
 
 
 def select_cancellations(df: pd.DataFrame) -> pd.DataFrame:

@@ -20,7 +20,6 @@ def get_trades_data(filepath: str, date: str):
     ddf = select_executions(df)
     ddf = aggregate_same_ts_events(ddf)
     ddf = ddf.reset_index()
-    ddf = normalise_trade_volume(ddf, data)
     return ddf
 
 
@@ -49,21 +48,4 @@ def aggregate_same_ts_events(df_: pd.DataFrame) -> pd.DataFrame:
             "price_changing": "last",
         }
     )
-    return df_
-
-
-def normalise_trade_volume(df_: pd.DataFrame, lob_data: pd.DataFrame) -> pd.DataFrame:
-    """
-    Normalise trade size by the average volume on the same side best quote.
-    """
-    ask_mean_vol = lob_data["best_ask_size"].mean()
-    bid_mean_vol = lob_data["best_bid_size"].mean()
-
-    def _normalise(row):
-        if row["side"] == "ASK":
-            return row["execution_size"] / ask_mean_vol
-        else:
-            return row["execution_size"] / bid_mean_vol
-
-    df_["norm_trade_volume"] = df_.apply(_normalise, axis=1)
     return df_
