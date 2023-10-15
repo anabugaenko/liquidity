@@ -13,15 +13,16 @@ from hurst_exponent.hurst_exponent import standard_hurst, generalized_hurst
 
 # Helper functions
 
-# Define a pool worker function
+
 def pool_worker(args):
+    # Define a pool worker function
     stock, values, option, acf_range = args
     return compute_acf(stock, values, option=option, acf_range=acf_range)
 
-def compute_acf(stock: str,
-                data: Union[float, int],
-                option: str = "linear",
-                acf_range: int = 1001) -> Tuple[str, Union[float, int]]:
+
+def compute_acf(
+    stock: str, data: Union[float, int], option: str = "linear", acf_range: int = 1001
+) -> Tuple[str, Union[float, int]]:
     """
     Computes the autocorrelation function (ACF) for a given stock's data based on the specified option.
 
@@ -61,19 +62,14 @@ def construct_xy(sample: pd.Series, name: str) -> pd.DataFrame:
     if len(sample) != len(y_values):
         raise ValueError(f"Sample sizes mismatch for {name}.")
 
-    xy_df = pd.DataFrame({
-        'x_values': range(1, len(y_values) + 1),
-        'y_values': y_values
-    })
+    xy_df = pd.DataFrame({"x_values": range(1, len(y_values) + 1), "y_values": y_values})
 
     return xy_df
 
 
-def compute_acfs(filename: str,
-                 data: Dict[str, Union[float, int]],
-                 option: str = "linear",
-                 acf_range: int = 1001,
-                 processes: int = 4) -> Dict[str, Union[float, int]]:
+def compute_acfs(
+    filename: str, data: Dict[str, Union[float, int]], option: str = "linear", acf_range: int = 1001, processes: int = 4
+) -> Dict[str, Union[float, int]]:
     """
     Computes and loads autocorrelation functions (ACF) for given returns based on the specified option.
 
@@ -110,10 +106,9 @@ def compute_acfs(filename: str,
     return acfs
 
 
-def compute_hurst_exponent(random_variate: str,
-                           stock: str,
-                           data: pd.Series,
-                           method: str = 'standard', **kwargs) -> Tuple[Union[None, Dict[str, Any]], Any]:
+def compute_hurst_exponent(
+    random_variate: str, stock: str, data: pd.Series, method: str = "standard", **kwargs
+) -> Tuple[Union[None, Dict[str, Any]], Any]:
     """
     Computes the Hurst exponent for a given stock's data using specified methods.
 
@@ -128,9 +123,9 @@ def compute_hurst_exponent(random_variate: str,
     - Fitted power law object, or None.
     """
     # Computing the Hurst exponent based on the method
-    if method == 'standard':
+    if method == "standard":
         hurst_val, fit = standard_hurst(data, **kwargs)
-    elif method == 'generalized':
+    elif method == "generalized":
         hurst_val, fit = generalized_hurst(data, **kwargs)
     else:
         raise ValueError("Invalid method provided. Choose either 'standard' or 'generalized'.")
@@ -139,11 +134,7 @@ def compute_hurst_exponent(random_variate: str,
 
     # Update the dictionary with Hurst values, stock name, and random variate
     if fit_dict.get("function_name") == "powerlaw":
-        fit_dict.update({
-            f'{method}_hurst': hurst_val,
-            'stock': stock,
-            'random_variate': random_variate
-        })
+        fit_dict.update({f"{method}_hurst": hurst_val, "stock": stock, "random_variate": random_variate})
         return fit_dict, fit
     return None, None
 
@@ -168,7 +159,7 @@ def get_acf_params(stock, data, **kwargs) -> Tuple[Union[None, Dict[str, Any]], 
     - Fitted power law object, or None.
     """
 
-    fit = Fit(data,  **kwargs)  # Fitting powerlaw to the DataFrame passed here
+    fit = Fit(data, **kwargs)  # Fitting powerlaw to the DataFrame passed here
     fit_dict = fit.powerlaw.to_dictionary()
 
     if fit_dict.get("function_name") == "powerlaw":
@@ -179,9 +170,9 @@ def get_acf_params(stock, data, **kwargs) -> Tuple[Union[None, Dict[str, Any]], 
 
 
 def plot_acf_difference(
-        stock_name: Union[str, Dict[str, List[float]]],
-        linear_acfs: Dict[str, List[float]],
-        nonlinear_acfs: Dict[str, List[float]],
+    stock_name: Union[str, Dict[str, List[float]]],
+    linear_acfs: Dict[str, List[float]],
+    nonlinear_acfs: Dict[str, List[float]],
 ) -> None:
     """
     Plot and compare the difference between linear and nonlinear ACF for a specific stock

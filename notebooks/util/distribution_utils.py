@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 import matplotlib.gridspec as gridspec
-from typing import Dict, List, Union, Tuple, Optional
+from typing import Dict, Union, List, Tuple, Optional
 
 import powerlaw
 from powerlaw import Fit, plot_pdf, plot_cdf, plot_ccdf
@@ -14,12 +14,10 @@ from powerlaw import Fit, plot_pdf, plot_cdf, plot_ccdf
 # Helper functions
 
 
-from typing import Dict, Union, List, Optional
-
 def fit_powerlaw(
     data_dict: Union[str, Dict[str, List[float]]],
     series: Union[List[float], None] = None,
-    filename: Optional[str] = None
+    filename: Optional[str] = None,
 ) -> Dict:
     """
     Fits a power law to the provided data.
@@ -43,7 +41,9 @@ def fit_powerlaw(
     elif isinstance(data_dict, dict):
         labels_to_series = data_dict
     else:
-        raise ValueError("Invalid input. Please provide a valid label and series or a dictionary mapping labels to series.")
+        raise ValueError(
+            "Invalid input. Please provide a valid label and series or a dictionary mapping labels to series."
+        )
 
     # Fit the series for each label
     fit_results = {}
@@ -70,7 +70,6 @@ def fit_powerlaw(
             print(f"File {filename} already exists. Skipping.")
 
     return fit_results
-
 
 
 def load_fit_objects(filename):
@@ -110,7 +109,9 @@ def get_fitting_params(fit_input: Union[Dict[str, Fit], Tuple[str, Fit]], distri
     elif isinstance(fit_input, dict):
         fit_objects = fit_input
     else:
-        raise ValueError("Invalid input. Please provide a valid stock name and fit or a dictionary mapping stock names to fits.")
+        raise ValueError(
+            "Invalid input. Please provide a valid stock name and fit or a dictionary mapping stock names to fits."
+        )
 
     param_map = {
         "power_law": ["alpha"],
@@ -141,8 +142,9 @@ def get_fitting_params(fit_input: Union[Dict[str, Fit], Tuple[str, Fit]], distri
     return pd.DataFrame(results)
 
 
-def distribution_compare(fit_input: Union[Dict[str, powerlaw.Fit], Tuple[str, powerlaw.Fit]],
-                         distribution: str) -> pd.DataFrame:
+def distribution_compare(
+    fit_input: Union[Dict[str, powerlaw.Fit], Tuple[str, powerlaw.Fit]], distribution: str
+) -> pd.DataFrame:
     """
     Compares power law distribution to a specified alternative distribution across stocks.
 
@@ -162,7 +164,8 @@ def distribution_compare(fit_input: Union[Dict[str, powerlaw.Fit], Tuple[str, po
         fit_objects = fit_input
     else:
         raise ValueError(
-            "Invalid input. Please provide a valid stock name and fit or a dictionary mapping stock names to fits.")
+            "Invalid input. Please provide a valid stock name and fit or a dictionary mapping stock names to fits."
+        )
 
     param_map = {
         "power_law": ["alpha"],
@@ -247,8 +250,10 @@ def plot_distributions(stock_name, data):
     plt.show()
 
 
-def plot_fit_objects(fit_input: Union[Dict[str, powerlaw.Fit], Tuple[str, powerlaw.Fit]],
-                     distributions: List[str] = ["power_law", "truncated_power_law", "exponential", "lognormal"]) -> None:
+def plot_fit_objects(
+    fit_input: Union[Dict[str, powerlaw.Fit], Tuple[str, powerlaw.Fit]],
+    distributions: List[str] = ["power_law", "truncated_power_law", "exponential", "lognormal"],
+) -> None:
     """
     Plot the Empirical CCDF, Power Law Fit, and comparison between Power Law
     and the specified distributions for the given stock fit objects.
@@ -268,7 +273,8 @@ def plot_fit_objects(fit_input: Union[Dict[str, powerlaw.Fit], Tuple[str, powerl
         fit_objects = fit_input
     else:
         raise ValueError(
-            "Invalid input. Please provide a valid stock name and fit or a dictionary mapping stock names to fits.")
+            "Invalid input. Please provide a valid stock name and fit or a dictionary mapping stock names to fits."
+        )
 
     num_stocks = len(fit_objects)
     if num_stocks == 1:
@@ -280,23 +286,29 @@ def plot_fit_objects(fit_input: Union[Dict[str, powerlaw.Fit], Tuple[str, powerl
     # Color map for different distributions
     # Color map for different distributions
     color_map = {
-        "power_law": 'g',
-        "truncated_power_law": 'c',
-        "lognormal": 'y',
-        "exponential": 'r',
-        "stretched_exponential": 'm',
-        "lognormal_positive": 'b'
+        "power_law": "g",
+        "truncated_power_law": "c",
+        "lognormal": "y",
+        "exponential": "r",
+        "stretched_exponential": "m",
+        "lognormal_positive": "b",
     }
 
     # Legend setup based on distributions
     legend_elements = [
-        mlines.Line2D([0], [0], color='b', marker='.', linestyle='None', markersize=10, label='Empirical Data')
+        mlines.Line2D([0], [0], color="b", marker=".", linestyle="None", markersize=10, label="Empirical Data")
     ]
     for dist in distributions:
         if dist in color_map:
             legend_elements.append(
-                mlines.Line2D([0], [0], color=color_map[dist], linestyle='--', markersize=10,
-                              label=dist.replace('_', ' ').capitalize())
+                mlines.Line2D(
+                    [0],
+                    [0],
+                    color=color_map[dist],
+                    linestyle="--",
+                    markersize=10,
+                    label=dist.replace("_", " ").capitalize(),
+                )
             )
 
     for i, (stock_name, fit) in enumerate(fit_objects.items()):
@@ -329,7 +341,7 @@ def plot_fit_objects(fit_input: Union[Dict[str, powerlaw.Fit], Tuple[str, powerl
             axs[2, i].loglog(x, y, color_map[dist] + "--")
         axs[2, i].set_title(f"{stock_name} - Distributions Comparison")
         axs[2, i].grid(False)
-        axs[2, i].legend(handles=legend_elements, loc='upper right', fontsize='small', frameon=False)
+        axs[2, i].legend(handles=legend_elements, loc="upper right", fontsize="small", frameon=False)
 
     plt.tight_layout()
     plt.show()

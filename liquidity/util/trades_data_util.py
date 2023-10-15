@@ -2,7 +2,6 @@ import pandas as pd
 
 from liquidity.util.orderbook import load_l3_data, select_trading_hours, select_top_book, select_columns, shift_prices
 from liquidity.util.utils import add_order_signs
-from liquidity.response_functions.price_response_functions import add_price_response
 
 
 def remove_midprice_trades(df_: pd.DataFrame) -> pd.DataFrame:
@@ -10,7 +9,7 @@ def remove_midprice_trades(df_: pd.DataFrame) -> pd.DataFrame:
     return df_[~mask]
 
 
-def get_trades_impact(filepath: str, date: str):
+def get_trades_data(filepath: str, date: str):
     data = load_l3_data(filepath)
     df = select_trading_hours(date, data)
     df = select_top_book(df)
@@ -21,7 +20,6 @@ def get_trades_impact(filepath: str, date: str):
     ddf = select_executions(df)
     ddf = aggregate_same_ts_events(ddf)
     ddf = ddf.reset_index()
-    ddf = add_price_response(ddf)
     ddf = normalise_trade_volume(ddf, data)
     return ddf
 

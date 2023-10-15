@@ -40,7 +40,7 @@ def compute_price_response(
     if remove_outliers:
         data = smooth_outliers(data)
     if normalise:
-        data[f"R{lag}"] = data[f"R{lag}"] / data["daily_R1"] * data["daily_R1"].mean()
+        data[f"R{lag}"] = data[f"R{lag}"] / data["daily_R1"]
     return data
 
 
@@ -55,6 +55,8 @@ def _conditional_aggregate_impact(df_: pd.DataFrame, T: int, response_column: st
     TODO: Implement price changing and none price changing flag for R(v, 1) and R(epsilon, 1),
 
     """
+    # queue length - sign=("sign", "sum"),
+    # volume profile - volume=("norm_size", sum)
 
     if "norm_size" in df_.columns:
         df_["signed_volume"] = df_["norm_size"] * df_["sign"]
@@ -82,22 +84,22 @@ def _conditional_aggregate_impact(df_: pd.DataFrame, T: int, response_column: st
     return df_agg
 
 
-def _normalise_axis(df: pd.DataFrame) -> pd.DataFrame:
-    if "vol_imbalance" in df.columns:
-        df["vol_imbalance"] = df["vol_imbalance"] / df["daily_vol"]
-    if "sign_imbalance" in df.columns:
-        df["sign_imbalance"] = df["sign_imbalance"] / df["daily_num"]
-    if "R" in df.columns:
-        df["R"] = df["R"] / df["daily_R1"]
-    return df
-
-
 def compute_conditional_aggregate_impact(
     df: pd.DataFrame, T: int, normalise: bool = True, remove_outliers: bool = True, log_prices=False
 ) -> pd.DataFrame:
     """
     RN(ΔV, ΔƐ): Called when fitting.
     """
+
+    def _normalise_axis(df: pd.DataFrame) -> pd.DataFrame:
+        if "vol_imbalance" in df.columns:
+            df["vol_imbalance"] = df["vol_imbalance"] / df["daily_vol"]
+        if "sign_imbalance" in df.columns:
+            df["sign_imbalance"] = df["sign_imbalance"] / df["daily_num"]
+        if "R" in df.columns:
+            df["R"] = df["R"] / df["daily_R1"]
+        return df
+
     # TODO: Implement compute_individual_impact: condition on previous sign and volume
     data = df.copy()
     if type(data["event_timestamp"].iloc[0]) != pd.Timestamp:
@@ -112,12 +114,3 @@ def compute_conditional_aggregate_impact(
     if remove_outliers:
         data = smooth_outliers(data, T=T)
     return data
-
-
-# TODO: reconcile and move to features
-def add_price_response(df_: pd.DataFrame, response_column: str = "R1") -> pd.DataFrame:
-    df_["midprice_change"] = df_["midprice"].diff().shift(-1).fillna(0)
-    df_[response_column] = df_["midprice_change"] * df_["sign"]
-    return df_
-
-

@@ -6,7 +6,7 @@ from liquidity.response_functions.price_response_functions import compute_condit
 
 # TODO: function that gets non aggregate features, e.g.,  size, normalised_volume etc
 def get_orderbook_states(raw_orderbook_df: pd.DataFrame):
-    # size_volume, normalized_volume, price_chng (is_new_best_price), R1_ordertype
+    # size_volume, normalized_volume, price_chng (is_new_best_price), R1_ordertype, spread, midprice
     pass
 
 

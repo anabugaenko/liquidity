@@ -7,13 +7,13 @@ from liquidity.util.orderbook import (
     select_top_book,
     select_columns,
     shift_prices,
-    select_best_quotes, rename_orderbook_columns,
+    select_best_quotes,
+    rename_orderbook_columns,
 )
-from liquidity.response_functions.price_response_functions import add_price_response
 from liquidity.util.trades_data_util import remove_midprice_trades
 
 
-def get_lo_impact(filepath: str, date: str) -> pd.DataFrame:
+def get_lo_data(filepath: str, date: str) -> pd.DataFrame:
     """
     Loads LOB events timeseries for a day from a file and
     returns a DataFrame of LO arrivals timeseries.
@@ -29,12 +29,11 @@ def get_lo_impact(filepath: str, date: str) -> pd.DataFrame:
     df = remove_midprice_orders(df)
     df = add_order_signs(df)
     df = select_lo_inserts(df)
-    df = add_price_response(df, response_column="R1_LO")
     df = normalise_lo_sizes(df)
     return df
 
 
-def get_ca_impact(filepath: str, date: str) -> pd.DataFrame:
+def get_ca_data(filepath: str, date: str) -> pd.DataFrame:
     data = load_l3_data(filepath)
     df = select_trading_hours(date, data)
     df = select_top_book(df)
@@ -45,12 +44,11 @@ def get_ca_impact(filepath: str, date: str) -> pd.DataFrame:
     df = select_cancellations(df)
     df = df.drop(["price", "size"], axis=1)
     df = rename_orderbook_columns(df)
-    df = add_price_response(df, response_column="R1_CA")
     df = normalise_lo_sizes(df)
     return df
 
 
-def get_qa_impact(raw_daily_df: pd.DataFrame, date: str) -> pd.DataFrame:
+def get_qa_data(raw_daily_df: pd.DataFrame, date: str) -> pd.DataFrame:
     df = select_trading_hours(date, raw_daily_df)
     df = select_best_quotes(df)
     df = select_columns(df)
@@ -60,7 +58,6 @@ def get_qa_impact(raw_daily_df: pd.DataFrame, date: str) -> pd.DataFrame:
     df = add_order_signs(df)
     df = df.groupby(["event_timestamp"]).last()
     df = df.reset_index()
-    df = add_price_response(df)
     return df
 
 

@@ -1,6 +1,8 @@
 import numpy as np
 
 # TODO: add functional form of conditional and unconditional R(1, v) and R(l)
+
+
 def scaling_function(x: float, alpha: float, beta: float) -> float:
     """
     Computes the value of the scaling function F(x), defined as a sigmoidal function.
@@ -29,8 +31,9 @@ def scaling_function(x: float, alpha: float, beta: float) -> float:
     return x / np.power(1 + np.power(abs(x), alpha), beta / alpha)
 
 
-def scaling_form(orderflow_imbalance: np.array, chi: float, kappa: float, alpha: float, beta: float,
-                 gamma: float) -> np.array:
+def scaling_form(
+    orderflow_imbalance: np.array, chi: float, kappa: float, alpha: float, beta: float, gamma: float
+) -> np.array:
     """
     Computes the scaling form that characterizes the positive correlations between aggregate signed order flow
     and contemporaneous price returns over a coarse-grained timescale T.
@@ -66,7 +69,7 @@ def scaling_form(orderflow_imbalance: np.array, chi: float, kappa: float, alpha:
     normalised_imbalance = imbalance / np.power(T, kappa)
 
     # Compute the scaling form value using the normalized imbalance, scaling function, and given parameters
-    return np.power(T, chi) * scaling_function(normalised_imbalance, alpha, beta) * gamma # replace gamma with const
+    return np.power(T, chi) * scaling_function(normalised_imbalance, alpha, beta) * gamma  # replace gamma with const
 
 
 def scaling_form_reflect(orderflow_imbalance, chi, kappa, alpha, beta, gamma):

@@ -38,7 +38,6 @@ def compute_returns(df: pd.DataFrame, remove_first: bool = True) -> pd.DataFrame
     # df["pct_returns"] = (df["midprice"] / df["midprice"].shift(1)) - 1 # using numpy's pct_change equivalent for robustness
     df["pct_returns"] = df["midprice"].pct_change()
 
-
     # Other representations of returns
     # Remove any NaN or infinite values from 'returns'
     df = df[~df["returns"].isin([np.nan, np.inf, -np.inf])]

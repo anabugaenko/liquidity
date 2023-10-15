@@ -24,6 +24,7 @@ class RescaledFormFitResult:
         self.beta = beta
         self.data = data
 
+
 class FitResult:
     T: int
     params: List
@@ -56,14 +57,14 @@ def fit_scaling_function(df, x_col="vol_imbalance", y_col="R", y_reflect=False, 
     y_values = df[y_col].values
     initial_guess = [1.0, 1.0]
     popt, pcov = curve_fit(
-                f=scaling_function,
-                xdata=x_values,
-                ydata=y_values,
-                p0=initial_guess,
-                bounds=(0, np.inf),
-                loss="soft_l1",
-                f_scale=0.2,
-                 )
+        f=scaling_function,
+        xdata=x_values,
+        ydata=y_values,
+        p0=initial_guess,
+        bounds=(0, np.inf),
+        loss="soft_l1",
+        f_scale=0.2,
+    )
 
     if verbose:
         print(f"parameters found: {popt}")
@@ -97,9 +98,9 @@ def fit_scaling_form(data_all, y_reflect=False, f_scale=0.2, verbose=False):
             print(f"standard deviations: {np.sqrt(np.diag(pcov))} \n")
 
         fitted_values = scaling_form(x_values, *popt)
-        #mape = np.mean(np.abs((y_values - fitted_values) / y_values)) * 100
+        # mape = np.mean(np.abs((y_values - fitted_values) / y_values)) * 100
 
-        return popt, pcov, fit_func # popt, mape, fit_func
+        return popt, pcov, fit_func  # popt, mape, fit_func
     except RuntimeError:
         print("Optimal parameters not found: The maximum number of function evaluations is exceeded")
         return None, None, None
@@ -124,6 +125,7 @@ def fit_rescaled_form(x, y, known_alpha=None, know_beta=None):
     initial_guess = [0.5] * num_params
     result = least_squares(_residuals, initial_guess, args=(x, y), loss="soft_l1")
     return result.x
+
 
 # FIXME: rename to _find_shape_parameters
 def compute_shape_parameters(df: pd.DataFrame, durations: List = [5, 10, 20, 50, 100]):
@@ -170,6 +172,7 @@ def compute_RN_QN(features_df, alpha, beta, fitting_method="MLE"):
     QN_fit_object = _find_scaling_exponents(fitting_method, QN_df)
 
     return RN_df, QN_df, RN_fit_object, QN_fit_object
+
 
 # FIXME: used where?
 def rescale_data(df: pd.DataFrame, popt, imbalance_col="vol_imbalance") -> pd.DataFrame:
