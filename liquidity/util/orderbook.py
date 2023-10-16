@@ -188,26 +188,6 @@ def normalise_all_sizes(df_: pd.DataFrame):
     return df_
 
 
-def add_daily_features(df_: pd.DataFrame, response_column: str = "R1") -> pd.DataFrame:
-    """
-    From a given time series of transactions add daily means of lag one price response R1
-    and order size (to be used as denominator in normalisation).
-    """
-    if type(df_["event_timestamp"].iloc[0]) != pd.Timestamp:
-        df_["event_timestamp"] = df_["event_timestamp"].apply(lambda x: pd.Timestamp(x))
-    df_["date"] = df_["event_timestamp"].apply(lambda x: x.date())
-
-    daily_R1 = df_[[response_column, "date"]].groupby("date").agg(daily_R1=(response_column, "mean"))
-    daily_volume = df_[["size", "date"]].groupby("date").agg(daily_vol=("size", "sum"))
-    daily_num = df_[["size", "date"]].groupby("date").agg(daily_num=("size", "count"))
-
-    df_["daily_R1"] = daily_R1.reindex(index=df_["event_timestamp"], method="ffill").values
-    df_["daily_vol"] = daily_volume.reindex(index=df_["event_timestamp"], method="ffill").values
-    df_["daily_num"] = daily_num.reindex(index=df_["event_timestamp"], method="ffill").values
-
-    return df_
-
-
 def rename_orderbook_columns(df_: pd.DataFrame) -> pd.DataFrame:
     df_columns = df_.columns
 
@@ -228,3 +208,25 @@ def rename_orderbook_columns(df_: pd.DataFrame) -> pd.DataFrame:
         df_ = df_.rename(columns={"trade_sign": "sign"})
 
     return df_
+
+
+def add_daily_features(df_: pd.DataFrame, response_column: str = "R1") -> pd.DataFrame:
+    """
+    From a given time series of transactions add daily means of lag one price response R1
+    and order size (to be used as denominator in normalisation).
+    """
+    if type(df_["event_timestamp"].iloc[0]) != pd.Timestamp:
+        df_["event_timestamp"] = df_["event_timestamp"].apply(lambda x: pd.Timestamp(x))
+    df_["date"] = df_["event_timestamp"].apply(lambda x: x.date())
+
+    daily_R1 = df_[[response_column, "date"]].groupby("date").agg(daily_R1=(response_column, "mean"))
+    daily_volume = df_[["size", "date"]].groupby("date").agg(daily_vol=("size", "sum"))
+    daily_num = df_[["size", "date"]].groupby("date").agg(daily_num=("size", "count"))
+
+    df_["daily_R1"] = daily_R1.reindex(index=df_["event_timestamp"], method="ffill").values
+    df_["daily_vol"] = daily_volume.reindex(index=df_["event_timestamp"], method="ffill").values
+    df_["daily_num"] = daily_num.reindex(index=df_["event_timestamp"], method="ffill").values
+
+    return df_
+
+

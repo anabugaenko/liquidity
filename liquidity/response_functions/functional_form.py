@@ -74,7 +74,8 @@ def scaling_form(
 
 def scaling_form_reflect(orderflow_imbalance, chi, kappa, alpha, beta, gamma):
     """
-    Inverse (on y axis) sigmoid. Used when fitting :math: L(t) := (LO, CA, QA)
+    The scaling form (sigmoid) where the scaling function is inverted on the y-axis).
+    Used when fitting :math: L(t) := (LO, CA, QA)
     """
     imbalance = orderflow_imbalance[0]
     T = orderflow_imbalance[1]

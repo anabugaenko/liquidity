@@ -3,56 +3,26 @@ import numpy as np
 from scipy import stats
 
 
-def add_order_signs(df_: pd.DataFrame) -> pd.DataFrame:
-    def _ennumerate_sides(row):
-        return 1 if row["side"] == "ASK" else -1
-
-    df_["sign"] = df_.apply(lambda row: _ennumerate_sides(row), axis=1)
+def add_R1(df_: pd.DataFrame) -> pd.DataFrame:
+    # R(1)
+    df_["midprice_change"] = df_["midprice"].diff().shift(-1).fillna(0)
+    df_["R1"] = df_["midprice_change"] * df_["sign"]
     return df_
 
 
-# TODO: move to price_response_finctons
-def compute_returns(df: pd.DataFrame, remove_first: bool = True) -> pd.DataFrame:
+def add_spead(df_: pd.DataFrame) -> pd.DataFrame:
     """
-    Compute various representations of returns for a given DataFrame.
+    :math: s(t) = a(t) - b(t)
 
-    Parameters:
-    - df (pd.DataFrame): Input dataframe with a 'midprice' column and 'event_timestamp' column.
-    - remove_first (bool, optional): Flag to indicate whether to remove the first daily price. Defaults to True.
+        The  spread can be measured in several ways:
 
-    Returns:
-    - pd.DataFrame: DataFrame with added columns for different return representations.
+       - At random instances in calendar time,
+       - At random instances in event-time,
+       - immediately before an event, e.g., execution, limit order placement etc.
+
     """
-    df = df.copy()
-
-    if type(df["event_timestamp"].iloc[0]) != pd.Timestamp:
-        df.loc[:, "event_timestamp"] = df["event_timestamp"].apply(lambda x: pd.Timestamp(x))
-
-    if remove_first:
-        df = remove_first_daily_prices(df)
-
-    # Absolute returns
-    df["returns"] = df["midprice"].diff()
-
-    # Percentage (relative) returns
-    # df["pct_returns"] = (df["midprice"] / df["midprice"].shift(1)) - 1 # using numpy's pct_change equivalent for robustness
-    df["pct_returns"] = df["midprice"].pct_change()
-
-    # Other representations of returns
-    # Remove any NaN or infinite values from 'returns'
-    df = df[~df["returns"].isin([np.nan, np.inf, -np.inf])]
-
-    # Time-varying variance derived directly from returns
-    df["variance"] = df["returns"] ** 2
-
-    # Volatility (return magnitudes - time-varying standard deviation derived from variance)
-    df["volatility"] = np.sqrt(df["variance"])
-
-    # Log returns
-    df["log_returns"] = np.log(df["midprice"]) - np.log(df["midprice"].shift(1))
-
-    return df
-
+    pass
+    return df_
 
 # Placeholder for the remove_first_daily_prices function as it was not provided
 def remove_first_daily_prices(df: pd.DataFrame) -> pd.DataFrame:
@@ -63,6 +33,14 @@ def remove_first_daily_prices(df: pd.DataFrame) -> pd.DataFrame:
 def remove_midprice_orders(df_: pd.DataFrame) -> pd.DataFrame:
     mask = df_["price"] == df_["midprice"]
     return df_[~mask]
+
+
+def add_order_signs(df_: pd.DataFrame) -> pd.DataFrame:
+    def _ennumerate_sides(row):
+        return 1 if row["side"] == "ASK" else -1
+
+    df_["sign"] = df_.apply(lambda row: _ennumerate_sides(row), axis=1)
+    return df_
 
 
 def remove_first_daily_prices(df: pd.DataFrame) -> pd.DataFrame:
@@ -77,6 +55,23 @@ def remove_first_daily_prices(df: pd.DataFrame) -> pd.DataFrame:
     first_days_indx = first_days_indx.dropna().astype(int)
     df_ = df_.loc[~df_["indx"].isin(first_days_indx)]
     return df_.drop(columns=["indx"]).reset_index()
+
+
+def normalise_size(df_: pd.DataFrame, size_col_name: str = "size") -> pd.DataFrame:
+    """
+    Normalise trade size by the average volume on the same side best quote.
+    """
+    ask_mean_vol = df_["ask_volume"].mean()
+    bid_mean_vol = df_["bid_volume"].mean()
+
+    def _normalise(row):
+        if row["side"] == "ASK":
+            return row[size_col_name] / ask_mean_vol
+        else:
+            return row[size_col_name] / bid_mean_vol
+
+    df_["norm_size"] = df_.apply(_normalise, axis=1)
+    return df_
 
 
 def bin_data_into_quantiles(df, x_col="vol_imbalance", y_col="R", q=100, duplicates="raise"):
@@ -143,25 +138,4 @@ def smooth_outliers(
     return df
 
 
-def normalise_size(df_: pd.DataFrame, size_col_name: str = "size") -> pd.DataFrame:
-    """
-    Normalise trade size by the average volume on the same side best quote.
-    """
-    ask_mean_vol = df_["ask_volume"].mean()
-    bid_mean_vol = df_["bid_volume"].mean()
 
-    def _normalise(row):
-        if row["side"] == "ASK":
-            return row[size_col_name] / ask_mean_vol
-        else:
-            return row[size_col_name] / bid_mean_vol
-
-    df_["norm_size"] = df_.apply(_normalise, axis=1)
-    return df_
-
-
-def add_R1(df_: pd.DataFrame) -> pd.DataFrame:
-    # R(1)
-    df_["midprice_change"] = df_["midprice"].diff().shift(-1).fillna(0)
-    df_["R1"] = df_["midprice_change"] * df_["sign"]
-    return df_

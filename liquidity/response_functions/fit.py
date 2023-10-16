@@ -1,13 +1,13 @@
 import numpy as np
 import pandas as pd
+from typing import List
 from scipy.optimize import curve_fit, least_squares
 
 from powerlaw_function import Fit
 
-from liquidity.response_functions.functional_form import scaling_function, scaling_form, scaling_form_reflect
 from liquidity.util.utils import bin_data_into_quantiles
-from liquidity.response_functions.features import add_aggregate_features
-from typing import List
+from liquidity.response_functions.features import compute_aggregate_features
+from liquidity.response_functions.functional_form import scaling_function, scaling_form, scaling_form_reflect
 
 
 class RescaledFormFitResult:
@@ -132,7 +132,7 @@ def compute_shape_parameters(df: pd.DataFrame, durations: List = [5, 10, 20, 50,
     """
     Computes shape parameters Alpha and Beta from known features
     """
-    data_norm = add_aggregate_features(df, durations)
+    data_norm = compute_aggregate_features(df, durations)
     popt, pcov, fit_func = fit_scaling_form(data_norm[["vol_imbalance", "T", "R"]])
     return popt, pcov, fit_func, data_norm
 
