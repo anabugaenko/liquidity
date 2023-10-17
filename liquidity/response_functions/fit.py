@@ -5,8 +5,8 @@ from scipy.optimize import curve_fit, least_squares
 
 from powerlaw_function import Fit
 
+from liquidity.response_functions.price_response_functions import compute_conditional_aggregate_impact
 from liquidity.util.utils import bin_data_into_quantiles
-from liquidity.response_functions.features import compute_aggregate_features
 from liquidity.response_functions.functional_form import scaling_function, scaling_form, scaling_form_reflect
 
 
@@ -132,7 +132,7 @@ def compute_shape_parameters(df: pd.DataFrame, durations: List = [5, 10, 20, 50,
     """
     Computes shape parameters Alpha and Beta from known features
     """
-    data_norm = compute_aggregate_features(df, durations)
+    data_norm = compute_intraday_features(df, durations)
     popt, pcov, fit_func = fit_scaling_form(data_norm[["vol_imbalance", "T", "R"]])
     return popt, pcov, fit_func, data_norm
 
@@ -204,3 +204,17 @@ def renormalise(df: pd.DataFrame, params, durations, q=31):
             print(f"Failed to fit for lag {T}")
 
     return fit_param
+
+
+def compute_intraday_features(df: pd.DataFrame, durations: List[int], **kwargs) -> pd.DataFrame:
+    df["event_timestamp"] = df["event_timestamp"].apply(lambda x: pd.Timestamp(x))
+    df["date"] = df["event_timestamp"].apply(lambda x: x.date())
+    results_ = []
+    for i, T in enumerate(durations):
+        lag_data = compute_conditional_aggregate_impact(df, T=T, **kwargs)
+        lag_data["R"] = lag_data[f"R{T}"]
+        lag_data = lag_data.drop(columns=f"R{T}")
+        lag_data["T"] = T
+        results_.append(lag_data)
+
+    return pd.concat(results_)

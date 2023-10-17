@@ -1,10 +1,8 @@
 import numpy as np
 import pandas as pd
-from typing import List
 
 from liquidity.util.orderbook import rename_orderbook_columns, add_daily_features
 from liquidity.util.utils import add_R1, normalise_size, remove_first_daily_prices
-from liquidity.response_functions.price_response_functions import compute_conditional_aggregate_impact
 
 
 def compute_orderbook_states(raw_orderbook_df: pd.DataFrame):
@@ -17,20 +15,6 @@ def compute_orderbook_states(raw_orderbook_df: pd.DataFrame):
     data = add_daily_features(data)
     orderbook_states = normalise_size(data)
     return orderbook_states
-
-
-def compute_aggregate_features(df: pd.DataFrame, durations: List[int], **kwargs) -> pd.DataFrame:
-    df["event_timestamp"] = df["event_timestamp"].apply(lambda x: pd.Timestamp(x))
-    df["date"] = df["event_timestamp"].apply(lambda x: x.date())
-    results_ = []
-    for i, T in enumerate(durations):
-        lag_data = compute_conditional_aggregate_impact(df, T=T, **kwargs)
-        lag_data["R"] = lag_data[f"R{T}"]
-        lag_data = lag_data.drop(columns=f"R{T}")
-        lag_data["T"] = T
-        results_.append(lag_data)
-
-    return pd.concat(results_)
 
 
 def compute_returns(df: pd.DataFrame, remove_first: bool = True) -> pd.DataFrame:
@@ -73,3 +57,35 @@ def compute_returns(df: pd.DataFrame, remove_first: bool = True) -> pd.DataFrame
     df["log_returns"] = np.log(df["midprice"]) - np.log(df["midprice"].shift(1))
 
     return df
+
+
+def compute_aggregate_features(df_: pd.DataFrame, T: int) -> pd.DataFrame:
+    """
+    From a given timeseries of transactions  aggregate different features
+    using T sized bins.
+    """
+
+    # queue length - sign=("sign", "sum"),
+    # volume profile - volume=("norm_size", sum)
+
+    if "norm_size" in df_.columns:
+        df_["signed_volume"] = df_["norm_size"] * df_["sign"]
+    elif "norm_trade_volume" in df_.columns:
+        df_["signed_volume"] = df_["norm_trade_volume"] * df_["sign"]
+    else:
+        df_["signed_volume"] = df_["size"] * df_["sign"]
+
+    df_agg = df_.groupby(df_.index // T).agg(
+        event_timestamp=("event_timestamp", "first"),
+        midprice=("midprice", "first"),
+        sign=("sign", "first"),
+        signed_volume=("signed_volume", "first"),
+        vol_imbalance=("signed_volume", "sum"),
+        sign_imbalance=("sign", "sum"),
+        daily_R1=("daily_R1", "first"),
+        daily_vol=("daily_vol", "first"),
+        daily_num=("daily_num", "first"),
+        # price_changing=('price_changing', 'first')
+    )
+
+    return df_agg

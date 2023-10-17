@@ -8,21 +8,6 @@ def remove_midprice_trades(df_: pd.DataFrame) -> pd.DataFrame:
     mask = df_["execution_price"] == df_["midprice"]
     return df_[~mask]
 
-
-def get_trades_data(filepath: str, date: str):
-    data = load_l3_data(filepath)
-    df = select_trading_hours(date, data)
-    df = select_top_book(df)
-    df = select_columns(df)
-    df = shift_prices(df)
-    df = remove_midprice_trades(df)
-    df = add_order_signs(df)
-    ddf = select_executions(df)
-    ddf = aggregate_same_ts_events(ddf)
-    ddf = ddf.reset_index()
-    return ddf
-
-
 def select_executions(df_: pd.DataFrame) -> pd.DataFrame:
     mask = df_["order_executed"]
     return df_[mask]
@@ -49,3 +34,17 @@ def aggregate_same_ts_events(df_: pd.DataFrame) -> pd.DataFrame:
         }
     )
     return df_
+
+
+def get_trades_data(filepath: str, date: str):
+    data = load_l3_data(filepath)
+    df = select_trading_hours(date, data)
+    df = select_top_book(df)
+    df = select_columns(df)
+    df = shift_prices(df)
+    df = remove_midprice_trades(df)
+    df = add_order_signs(df)
+    ddf = select_executions(df)
+    ddf = aggregate_same_ts_events(ddf)
+    ddf = ddf.reset_index()
+    return ddf
