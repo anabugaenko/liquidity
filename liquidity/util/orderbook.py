@@ -56,6 +56,62 @@ def select_top_book(df_: pd.DataFrame) -> pd.DataFrame:
     return df_[mask]
 
 
+def shift_prices(df_: pd.DataFrame) -> pd.DataFrame:
+    """
+    This transformation is specific to how BMLL offer orderbook view
+    where each event is accompanied by respective price value after the event has taken place.
+    We're interested in how the price changed so shifting it to get values of
+    mid-price, bid and ask immediately before each event.
+    """
+    df_["midprice"] = df_["midprice"].shift().fillna(0)
+    df_["ask"] = df_["ask"].shift().fillna(0)
+    df_["bid"] = df_["bid"].shift().fillna(0)
+    df_["ask_volume_profile"] = df_["ask_volume_profile"].shift().fillna(0)
+    df_["bid_volume_profile"] = df_["bid_volume_profile"].shift().fillna(0)
+    return df_
+
+
+def select_best_quotes(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Need to carefully select only events that affected top book level.
+    By definition selecting events at level 0 and 1 is not accurate for cancellation orders
+    since the level is set to 0 if the removal caused a price level to no longer exist.
+    """
+    price_level_mask = (df.price_level == 1) | (df.price_level == 0)
+    old_price_level_mask = (df.old_price_level == 1) | (df.old_price_level == 0)
+    return df[price_level_mask & old_price_level_mask]
+
+# TODO: USED WHERE/FOR?
+def clean_lob_data(date: str, df_raw: pd.DataFrame) -> pd.DataFrame:
+    df = select_trading_hours(date, df_raw)
+    df = select_top_book(df)
+    df = select_columns(df)
+    df = shift_prices(df)
+    return remove_midprice_orders(df)
+
+
+def rename_orderbook_columns(df_: pd.DataFrame) -> pd.DataFrame:
+    df_columns = df_.columns
+
+    if "old_price" in df_columns and "old_size" in df_columns:
+        df_ = df_.drop(["price", "size"], axis=1)
+        df_ = df_.rename(columns={"old_price": "price", "old_size": "size"})
+
+    if "R1_CA" in df_columns:
+        df_ = df_.rename(columns={"R1_CA": "R1"})
+
+    if "R1_LO" in df_columns:
+        df_ = df_.rename(columns={"R1_LO": "R1"})
+
+    if "execution_size" in df_columns:
+        df_ = df_.rename(columns={"execution_size": "size"})
+
+    if "trade_sign" in df_columns:
+        df_ = df_.rename(columns={"trade_sign": "sign"})
+
+    return df_
+
+
 def select_columns(df_: pd.DataFrame) -> pd.DataFrame:
     """
     Select only relevant info about each event.
@@ -87,146 +143,13 @@ def select_columns(df_: pd.DataFrame) -> pd.DataFrame:
         columns={
             "best_ask_price": "ask",
             "best_bid_price": "bid",
-            "best_ask_size": "ask_volume",
-            "best_bid_size": "bid_volume",
-            "best_ask_num_orders": "ask_count",
-            "best_bid_num_orders": "bid_count",
+            "best_ask_size": "ask_volume_profile",
+            "best_bid_size": "bid_volume_profile",
+            "best_ask_num_orders": "ask_queue_length",
+            "best_bid_num_orders": "bid_queue_length",
             "is_new_best_price": "price_changing",
         }
     )
 
     df_["midprice"] = (df_["ask"] + df_["bid"]) * 0.5
     return df_
-
-
-def shift_prices(df_: pd.DataFrame) -> pd.DataFrame:
-    """
-    This transformation is specific to how BMLL offer orderbook view
-    where each event is accompanied by respective price value after the event has taken place.
-    We're interested in how the price changed so shifting it to get values of
-    mid-price, bid and ask immediately before each event.
-    """
-    df_["midprice"] = df_["midprice"].shift().fillna(0)
-    df_["ask"] = df_["ask"].shift().fillna(0)
-    df_["bid"] = df_["bid"].shift().fillna(0)
-    df_["ask_volume"] = df_["ask_volume"].shift().fillna(0)
-    df_["bid_volume"] = df_["bid_volume"].shift().fillna(0)
-    return df_
-
-
-def select_best_quotes(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Need to carefully select only events that affected top book level.
-    By definition selecting events at level 0 and 1 is not accurate for cancellation orders
-    since the level is set to 0 if the removal caused a price level to no longer exist.
-    """
-    price_level_mask = (df.price_level == 1) | (df.price_level == 0)
-    old_price_level_mask = (df.old_price_level == 1) | (df.old_price_level == 0)
-    return df[price_level_mask & old_price_level_mask]
-
-
-def clean_lob_data(date: str, df_raw: pd.DataFrame) -> pd.DataFrame:
-    df = select_trading_hours(date, df_raw)
-    df = select_top_book(df)
-    df = select_columns(df)
-    df = shift_prices(df)
-    return remove_midprice_orders(df)
-
-
-def normalise_all_sizes(df_: pd.DataFrame):
-    """
-    if execution -> execution_size
-    if insert/LO -> size
-    if cancel/remove -> old size
-    """
-
-    def _select_size_for_order_type(row):
-        mask1 = row["lob_action"] == "INSERT"
-        mask2 = row["lob_action"] == "UPDATE"
-        mask2 = mask2 & (row["price_changing"] == True)
-        lo_mask = mask1 | mask2
-
-        if lo_mask:
-            return row["size"]
-
-        mo_mask = row["order_executed"]
-
-        if mo_mask:
-            return row["execution_size"]
-
-        mask1 = row["lob_action"] == "REMOVE"
-        mask2 = row["order_executed"] == False
-        mask3 = row["old_price_level"] == 1
-        mask_complete_removals = mask1 & mask2 & mask3
-
-        mask4 = row["lob_action"] == "UPDATE"
-        mask5 = row["order_executed"] == False
-        mask6 = row["old_price_level"] == 1
-        mask7 = row["size"] < row["old_size"]
-        mask_partial_removals = mask4 & mask5 & mask6 & mask7
-        ca_mask = mask_complete_removals | mask_partial_removals
-
-        if ca_mask:
-            return row["old_size"]
-
-        return 0
-
-    df_["new_size"] = df_.apply(lambda row: _select_size_for_order_type(row), axis=1)
-    df_ = df_[~(df_["new_size"] == 0)]
-
-    ask_mean_size = df_[df_["side"] == "ASK"]["size"].mean()
-    bid_mean_size = df_[df_["side"] == "BID"]["size"].mean()
-
-    def _normalise(row):
-        if row["side"] == "ASK":
-            return row["new_size"] / ask_mean_size
-        else:
-            return row["new_size"] / bid_mean_size
-
-    df_["norm_size"] = df_.apply(_normalise, axis=1)
-
-    return df_
-
-
-def rename_orderbook_columns(df_: pd.DataFrame) -> pd.DataFrame:
-    df_columns = df_.columns
-
-    if "old_price" in df_columns and "old_size" in df_columns:
-        df_ = df_.drop(["price", "size"], axis=1)
-        df_ = df_.rename(columns={"old_price": "price", "old_size": "size"})
-
-    if "R1_CA" in df_columns:
-        df_ = df_.rename(columns={"R1_CA": "R1"})
-
-    if "R1_LO" in df_columns:
-        df_ = df_.rename(columns={"R1_LO": "R1"})
-
-    if "execution_size" in df_columns:
-        df_ = df_.rename(columns={"execution_size": "size"})
-
-    if "trade_sign" in df_columns:
-        df_ = df_.rename(columns={"trade_sign": "sign"})
-
-    return df_
-
-
-def add_daily_features(df_: pd.DataFrame, response_column: str = "R1") -> pd.DataFrame:
-    """
-    From a given time series of transactions add daily means of lag one price response R1
-    and order size (to be used as denominator in normalisation).
-    """
-    if type(df_["event_timestamp"].iloc[0]) != pd.Timestamp:
-        df_["event_timestamp"] = df_["event_timestamp"].apply(lambda x: pd.Timestamp(x))
-    df_["date"] = df_["event_timestamp"].apply(lambda x: x.date())
-
-    daily_R1 = df_[[response_column, "date"]].groupby("date").agg(daily_R1=(response_column, "mean"))
-    daily_volume = df_[["size", "date"]].groupby("date").agg(daily_vol=("size", "sum"))
-    daily_num = df_[["size", "date"]].groupby("date").agg(daily_num=("size", "count"))
-
-    df_["daily_R1"] = daily_R1.reindex(index=df_["event_timestamp"], method="ffill").values
-    df_["daily_vol"] = daily_volume.reindex(index=df_["event_timestamp"], method="ffill").values
-    df_["daily_num"] = daily_num.reindex(index=df_["event_timestamp"], method="ffill").values
-
-    return df_
-
-

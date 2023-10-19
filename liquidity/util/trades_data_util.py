@@ -1,7 +1,7 @@
 import pandas as pd
 
 from liquidity.util.orderbook import load_l3_data, select_trading_hours, select_top_book, select_columns, shift_prices
-from liquidity.util.utils import add_order_signs
+from liquidity.response_functions.features import add_order_signs
 
 
 def remove_midprice_trades(df_: pd.DataFrame) -> pd.DataFrame:
@@ -28,8 +28,10 @@ def aggregate_same_ts_events(df_: pd.DataFrame) -> pd.DataFrame:
             "ask": "last",
             "bid": "last",
             "midprice": "last",
-            "ask_volume": "first",
-            "bid_volume": "first",
+            "ask_volume_profile": "first",
+            "bid_volume_profile": "first",
+            "ask_queue_length": "first",
+            "bid_queue_length": "first",
             "price_changing": "last",
         }
     )

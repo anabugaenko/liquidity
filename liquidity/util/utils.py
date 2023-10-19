@@ -3,44 +3,16 @@ import numpy as np
 from scipy import stats
 
 
-def add_R1(df_: pd.DataFrame) -> pd.DataFrame:
-    # R(1)
-    df_["midprice_change"] = df_["midprice"].diff().shift(-1).fillna(0)
-    df_["R1"] = df_["midprice_change"] * df_["sign"]
-    return df_
-
-
-def add_spead(df_: pd.DataFrame) -> pd.DataFrame:
-    """
-    :math: s(t) = a(t) - b(t)
-
-        The  spread can be measured in several ways:
-
-       - At random instances in calendar time,
-       - At random instances in event-time,
-       - immediately before an event, e.g., execution, limit order placement etc.
-
-    """
-    pass
-    return df_
-
-# Placeholder for the remove_first_daily_prices function as it was not provided
-def remove_first_daily_prices(df: pd.DataFrame) -> pd.DataFrame:
-    # Your implementation here
-    pass
-
-
 def remove_midprice_orders(df_: pd.DataFrame) -> pd.DataFrame:
     mask = df_["price"] == df_["midprice"]
     return df_[~mask]
 
 
-def add_order_signs(df_: pd.DataFrame) -> pd.DataFrame:
-    def _ennumerate_sides(row):
-        return 1 if row["side"] == "ASK" else -1
+def add_mean_queue_lengths(lob_data: pd.DataFrame) -> pd.DataFrame:
+    lob_data['ask_queue_size_mean'] = lob_data['ask_volume_profile'].mean()
+    lob_data['bid_queue_size_mean'] = lob_data['bid_volume_profile'].mean()
 
-    df_["sign"] = df_.apply(lambda row: _ennumerate_sides(row), axis=1)
-    return df_
+    return lob_data
 
 
 def remove_first_daily_prices(df: pd.DataFrame) -> pd.DataFrame:
@@ -61,8 +33,8 @@ def normalise_size(df_: pd.DataFrame, size_col_name: str = "size") -> pd.DataFra
     """
     Normalise trade size by the average volume on the same side best quote.
     """
-    ask_mean_vol = df_["ask_volume"].mean()
-    bid_mean_vol = df_["bid_volume"].mean()
+    ask_mean_vol = df_["ask_queue_size_mean"].mean()  # TODO: update to normalise by single type order mean
+    bid_mean_vol = df_["bid_queue_size_mean"].mean()
 
     def _normalise(row):
         if row["side"] == "ASK":
@@ -72,6 +44,20 @@ def normalise_size(df_: pd.DataFrame, size_col_name: str = "size") -> pd.DataFra
 
     df_["norm_size"] = df_.apply(_normalise, axis=1)
     return df_
+
+
+def normalise_imbalances(df: pd.DataFrame) -> pd.DataFrame:
+
+    if "vol_imbalance" in df.columns:
+        df["vol_imbalance"] = df["vol_imbalance"] / df["daily_vol"]
+
+    if "sign_imbalance" in df.columns:
+        df["sign_imbalance"] = df["sign_imbalance"] / df["daily_num"]
+
+    if "R" in df.columns:
+        df["R"] = df["R"] / df["daily_R1"]
+
+    return df
 
 
 def bin_data_into_quantiles(df, x_col="vol_imbalance", y_col="R", q=100, duplicates="raise"):
@@ -98,7 +84,7 @@ def bin_data_into_quantiles(df, x_col="vol_imbalance", y_col="R", q=100, duplica
 
 
 def smooth_outliers(
-    df: pd.DataFrame, T=None, columns=["vol_imbalance", "sign_imbalance"], std_level=2, remove=False, verbose=False
+    df: pd.DataFrame, T=None, columns=["vol_imbalance", "sign_imbalance", "R"], std_level=2, remove=False, verbose=False
 ):
     # TODO: default columns to None
     """
