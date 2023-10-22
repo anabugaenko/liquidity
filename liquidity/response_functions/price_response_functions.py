@@ -25,6 +25,22 @@ def _price_response_function(df_: pd.DataFrame, lag: int = 1, log_prices=False) 
     return df_agg
 
 
+def compute_price_response(
+    df: pd.DataFrame, lag: int = 1, normalise: bool = True, remove_outliers: bool = True, log_prices=False
+) -> pd.DataFrame:
+    """
+    R(l) interface
+    """
+
+    data = _price_response_function(df, lag=lag, log_prices=log_prices)
+    if remove_outliers:
+        data = smooth_outliers(data)
+    if normalise:
+        data[f"R{lag}"] = data[f"R{lag}"] / data["daily_R1"]
+    return data
+
+
+
 def _conditional_aggregate_impact(df_: pd.DataFrame, T: int, response_column: str, log_prices=False) -> pd.DataFrame:
     """
     RN(ΔV, ΔƐ)
@@ -65,21 +81,6 @@ def _conditional_aggregate_impact(df_: pd.DataFrame, T: int, response_column: st
     return df_agg
 
 
-def compute_price_response(
-    df: pd.DataFrame, lag: int = 1, normalise: bool = True, remove_outliers: bool = True, log_prices=False
-) -> pd.DataFrame:
-    """
-    R(l) interface
-    """
-
-    data = _price_response_function(df, lag=lag, log_prices=log_prices)
-    if remove_outliers:
-        data = smooth_outliers(data)
-    if normalise:
-        data[f"R{lag}"] = data[f"R{lag}"] / data["daily_R1"]
-    return data
-
-
 def compute_conditional_aggregate_impact(
     df: pd.DataFrame, T: int, normalise: bool = True, remove_outliers: bool = True, log_prices=False
 ) -> pd.DataFrame:
@@ -97,7 +98,7 @@ def compute_conditional_aggregate_impact(
             df["R"] = df["R"] / df["daily_R1"]
         return df
 
-    # TODO: Implement compute_individual_impact: condition on volume and  sign of previous order
+    # TODO: Implement compute_individual_impact (condition on volume and  sign of previous order)
     data = df.copy()
     if type(data["event_timestamp"].iloc[0]) != pd.Timestamp:
         data["event_timestamp"] = data["event_timestamp"].apply(lambda x: pd.Timestamp(x))

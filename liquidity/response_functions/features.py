@@ -8,7 +8,7 @@ from liquidity.response_functions.price_response_functions import compute_condit
 
 
 def compute_orderbook_states(raw_orderbook_df: pd.DataFrame):
-    # R1_ordertype, spread, midprice
+    # R1_ordertype, spread
 
     if type(raw_orderbook_df["event_timestamp"].iloc[0]) != pd.Timestamp:
         raw_orderbook_df["event_timestamp"] = raw_orderbook_df["event_timestamp"].apply(lambda x: pd.Timestamp(x))

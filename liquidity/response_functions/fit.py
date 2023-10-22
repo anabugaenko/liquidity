@@ -128,11 +128,11 @@ def fit_rescaled_form(x, y, known_alpha=None, know_beta=None):
 
 
 # FIXME: rename to _find_shape_parameters
-def compute_shape_parameters(df: pd.DataFrame, durations: List = [5, 10, 20, 50, 100]):
+def compute_shape_parameters(df: pd.DataFrame, durations: List = [5, 10, 20, 50, 100], **kwargs):
     """
     Computes shape parameters Alpha and Beta from known features
     """
-    data_norm = compute_aggregate_features(df, durations)
+    data_norm = compute_aggregate_features(df, durations, **kwargs)
     popt, pcov, fit_func = fit_scaling_form(data_norm[["vol_imbalance", "T", "R"]])
     return popt, pcov, fit_func, data_norm
 
