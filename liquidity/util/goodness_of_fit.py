@@ -2,6 +2,7 @@ import numpy as np
 from scipy import stats
 from typing import List, Tuple
 
+
 # TODO: remove bic from loglikelihoods, then we don't have to make assumptions about distribution of residuals
 def loglikelihoods(data: List[float]) -> List[float]:
     """

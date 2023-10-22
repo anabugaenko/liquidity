@@ -40,7 +40,6 @@ def compute_price_response(
     return data
 
 
-
 def _conditional_aggregate_impact(df_: pd.DataFrame, T: int, response_column: str, log_prices=False) -> pd.DataFrame:
     """
     RN(ΔV, ΔƐ)

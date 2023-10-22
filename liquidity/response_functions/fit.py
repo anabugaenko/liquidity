@@ -144,14 +144,14 @@ def _find_scaling_exponents(fitting_method: str, xy_values: pd.DataFrame) -> Fit
     return Fit(xy_values, nonlinear_fit_method=fitting_method, xmin_distance="BIC")
 
 
-def compute_RN_QN(features_df, alpha, beta, fitting_method="MLE"):
+def compute_RN_QN(features_df, alpha, beta, fitting_method="MLE", **kwargs):
     """
     Helper function to extract series of RN and QN
     from fit param for each N
     """
 
     # fit rescaled form at each N, returns dictionary of fitting results
-    fit_results_per_lag = rescaled_form_fit_results(features_df, alpha, beta)
+    fit_results_per_lag = rescaled_form_fit_results(features_df, alpha, beta, **kwargs)
 
     RN_series = []
     QN_series = []

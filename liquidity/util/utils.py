@@ -24,6 +24,7 @@ def add_spead(df_: pd.DataFrame) -> pd.DataFrame:
     pass
     return df_
 
+
 # Placeholder for the remove_first_daily_prices function as it was not provided
 def remove_first_daily_prices(df: pd.DataFrame) -> pd.DataFrame:
     # Your implementation here
@@ -136,6 +137,3 @@ def smooth_outliers(
             df[name] = winsorize_queue(s, level=std_level)
 
     return df
-
-
-

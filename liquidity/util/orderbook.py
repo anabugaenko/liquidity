@@ -228,5 +228,3 @@ def add_daily_features(df_: pd.DataFrame, response_column: str = "R1") -> pd.Dat
     df_["daily_num"] = daily_num.reindex(index=df_["event_timestamp"], method="ffill").values
 
     return df_
-
-
