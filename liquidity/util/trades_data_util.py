@@ -1,7 +1,8 @@
 import pandas as pd
 
 from liquidity.util.orderbook import load_l3_data, select_trading_hours, select_top_book, select_columns, shift_prices
-from liquidity.util.utils import add_order_signs
+from liquidity.response_functions.features import order_signs
+from liquidity.util.utils import add_mean_queue_lengths
 
 
 def remove_midprice_trades(df_: pd.DataFrame) -> pd.DataFrame:
@@ -11,12 +12,13 @@ def remove_midprice_trades(df_: pd.DataFrame) -> pd.DataFrame:
 
 def get_trades_data(filepath: str, date: str):
     data = load_l3_data(filepath)
-    df = select_trading_hours(date, data)
+    df = add_mean_queue_lengths(data)
+    df = select_trading_hours(date, df)
     df = select_top_book(df)
     df = select_columns(df)
     df = shift_prices(df)
     df = remove_midprice_trades(df)
-    df = add_order_signs(df)
+    df = order_signs(df)
     ddf = select_executions(df)
     ddf = aggregate_same_ts_events(ddf)
     ddf = ddf.reset_index()
@@ -46,6 +48,8 @@ def aggregate_same_ts_events(df_: pd.DataFrame) -> pd.DataFrame:
             "ask_volume": "first",
             "bid_volume": "first",
             "price_changing": "last",
+            "ask_queue_size_mean": "first",
+            "bid_queue_size_mean": "first",
         }
     )
     return df_

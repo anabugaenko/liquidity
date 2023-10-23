@@ -3,45 +3,16 @@ import numpy as np
 from scipy import stats
 
 
-def add_R1(df_: pd.DataFrame) -> pd.DataFrame:
-    # R(1)
-    df_["midprice_change"] = df_["midprice"].diff().shift(-1).fillna(0)
-    df_["R1"] = df_["midprice_change"] * df_["sign"]
-    return df_
-
-
-def add_spead(df_: pd.DataFrame) -> pd.DataFrame:
-    """
-    :math: s(t) = a(t) - b(t)
-
-        The  spread can be measured in several ways:
-
-       - At random instances in calendar time,
-       - At random instances in event-time,
-       - immediately before an event, e.g., execution, limit order placement etc.
-
-    """
-    pass
-    return df_
-
-
-# Placeholder for the remove_first_daily_prices function as it was not provided
-def remove_first_daily_prices(df: pd.DataFrame) -> pd.DataFrame:
-    # Your implementation here
-    pass
-
-
 def remove_midprice_orders(df_: pd.DataFrame) -> pd.DataFrame:
     mask = df_["price"] == df_["midprice"]
     return df_[~mask]
 
 
-def add_order_signs(df_: pd.DataFrame) -> pd.DataFrame:
-    def _ennumerate_sides(row):
-        return 1 if row["side"] == "ASK" else -1
+def add_mean_queue_lengths(lob_data: pd.DataFrame) -> pd.DataFrame:
+    lob_data["ask_queue_size_mean"] = lob_data['best_ask_size'].mean()
+    lob_data["bid_queue_size_mean"] =  lob_data['best_bid_size'].mean()
 
-    df_["sign"] = df_.apply(lambda row: _ennumerate_sides(row), axis=1)
-    return df_
+    return lob_data
 
 
 def remove_first_daily_prices(df: pd.DataFrame) -> pd.DataFrame:
@@ -62,8 +33,11 @@ def normalise_size(df_: pd.DataFrame, size_col_name: str = "size") -> pd.DataFra
     """
     Normalise trade size by the average volume on the same side best quote.
     """
-    ask_mean_vol = df_["ask_volume"].mean()
-    bid_mean_vol = df_["bid_volume"].mean()
+    # ask_mean_vol = df_["ask_volume"].mean()
+    # bid_mean_vol = df_["bid_volume"].mean()
+
+    ask_mean_vol = df_["ask_queue_size_mean"].mean()
+    bid_mean_vol = df_["bid_queue_size_mean"].mean()
 
     def _normalise(row):
         if row["side"] == "ASK":

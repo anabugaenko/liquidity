@@ -1,6 +1,7 @@
 import pandas as pd
 
-from liquidity.util.utils import remove_midprice_orders, add_order_signs
+from liquidity.util.utils import remove_midprice_orders
+from liquidity.response_functions.features import order_signs
 from liquidity.util.orderbook import (
     load_l3_data,
     select_trading_hours,
@@ -27,7 +28,7 @@ def get_lo_data(filepath: str, date: str) -> pd.DataFrame:
     df = select_columns(df)
     df = shift_prices(df)
     df = remove_midprice_orders(df)
-    df = add_order_signs(df)
+    df = order_signs(df)
     df = select_lo_inserts(df)
     return df
 
@@ -39,7 +40,7 @@ def get_ca_data(filepath: str, date: str) -> pd.DataFrame:
     df = select_columns(df)
     df = shift_prices(df)
     df = remove_midprice_orders(df)
-    df = add_order_signs(df)
+    df = order_signs(df)
     df = select_cancellations(df)
     df = df.drop(["price", "size"], axis=1)
     df = rename_orderbook_columns(df)
@@ -54,7 +55,7 @@ def get_qa_data(raw_daily_df: pd.DataFrame, date: str) -> pd.DataFrame:
     df = shift_prices(df)
     df = remove_midprice_orders(df)
     df = remove_midprice_trades(df)
-    df = add_order_signs(df)
+    df = order_signs(df)
     df = df.groupby(["event_timestamp"]).last()
     df = df.reset_index()
     return df

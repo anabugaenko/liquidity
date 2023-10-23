@@ -6,7 +6,7 @@ from scipy.optimize import curve_fit, least_squares
 from powerlaw_function import Fit
 
 from liquidity.util.utils import bin_data_into_quantiles
-from liquidity.response_functions.features import compute_aggregate_features
+from liquidity.response_functions.price_response_functions import compute_aggregate_features
 from liquidity.response_functions.functional_form import scaling_function, scaling_form, scaling_form_reflect
 
 

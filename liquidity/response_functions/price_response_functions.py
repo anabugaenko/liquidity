@@ -1,8 +1,11 @@
+from typing import List
+
 import pandas as pd
 import numpy as np
 
 from liquidity.util.utils import smooth_outliers
-from liquidity.util.orderbook import add_daily_features, rename_orderbook_columns
+from liquidity.util.orderbook import rename_orderbook_columns
+from liquidity.response_functions.features import daily_orderbook_states
 
 
 def _price_response_function(df_: pd.DataFrame, lag: int = 1, log_prices=False) -> pd.DataFrame:
@@ -54,6 +57,7 @@ def _conditional_aggregate_impact(df_: pd.DataFrame, T: int, response_column: st
     # queue length - sign=("sign", "sum"),
     # volume profile - volume=("norm_size", sum)
 
+    # TODO: this should be part of orderbook states generation
     if "norm_size" in df_.columns:
         df_["signed_volume"] = df_["norm_size"] * df_["sign"]
     elif "norm_trade_volume" in df_.columns:
@@ -102,7 +106,7 @@ def compute_conditional_aggregate_impact(
     if type(data["event_timestamp"].iloc[0]) != pd.Timestamp:
         data["event_timestamp"] = data["event_timestamp"].apply(lambda x: pd.Timestamp(x))
     data = rename_orderbook_columns(data)
-    data = add_daily_features(data)
+    data = daily_orderbook_states(data)
     data = _conditional_aggregate_impact(data, T=T, response_column=f"R{T}", log_prices=log_prices)
 
     if normalise:
@@ -111,3 +115,20 @@ def compute_conditional_aggregate_impact(
     if remove_outliers:
         data = smooth_outliers(data, T=T)
     return data
+
+
+def compute_aggregate_features(df: pd.DataFrame, durations: List[int], **kwargs) -> pd.DataFrame:
+    """
+    TODO: move to features and take out impact computation
+    """
+    df["event_timestamp"] = df["event_timestamp"].apply(lambda x: pd.Timestamp(x))
+    df["date"] = df["event_timestamp"].apply(lambda x: x.date())
+    results_ = []
+    for i, T in enumerate(durations):
+        lag_data = compute_conditional_aggregate_impact(df, T=T, **kwargs)
+        lag_data["R"] = lag_data[f"R{T}"]
+        lag_data = lag_data.drop(columns=f"R{T}")
+        lag_data["T"] = T
+        results_.append(lag_data)
+
+    return pd.concat(results_)
