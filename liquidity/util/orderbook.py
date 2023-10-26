@@ -81,7 +81,7 @@ def select_columns(df_: pd.DataFrame) -> pd.DataFrame:
         "best_ask_num_orders",
         "best_bid_num_orders",
         "ask_queue_size_mean",
-        "bid_queue_size_mean"
+        "bid_queue_size_mean",
     ]
 
     df_ = df_[sub_columns_list]

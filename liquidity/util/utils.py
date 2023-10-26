@@ -1,3 +1,4 @@
+import pandas
 import pandas as pd
 import numpy as np
 from scipy import stats
@@ -9,8 +10,8 @@ def remove_midprice_orders(df_: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_mean_queue_lengths(lob_data: pd.DataFrame) -> pd.DataFrame:
-    lob_data["ask_queue_size_mean"] = lob_data['best_ask_size'].mean()
-    lob_data["bid_queue_size_mean"] =  lob_data['best_bid_size'].mean()
+    lob_data["ask_queue_size_mean"] = lob_data["best_ask_size"].mean()
+    lob_data["bid_queue_size_mean"] = lob_data["best_bid_size"].mean()
 
     return lob_data
 
@@ -49,6 +50,16 @@ def normalise_size(df_: pd.DataFrame, size_col_name: str = "size") -> pd.DataFra
     return df_
 
 
+def normalise_by_daily(df: pd.DataFrame) -> pd.DataFrame:
+    if "vol_imbalance" in df.columns:
+        df["vol_imbalance"] = df["vol_imbalance"] / df["daily_vol"]
+    if "sign_imbalance" in df.columns:
+        df["sign_imbalance"] = df["sign_imbalance"] / df["daily_num"]
+    if "R" in df.columns:
+        df["R"] = df["R"] / df["daily_R1"]
+    return df
+
+
 def bin_data_into_quantiles(df, x_col="vol_imbalance", y_col="R", q=100, duplicates="raise"):
     """
     Returns binned series.
@@ -73,7 +84,7 @@ def bin_data_into_quantiles(df, x_col="vol_imbalance", y_col="R", q=100, duplica
 
 
 def smooth_outliers(
-    df: pd.DataFrame, T=None, columns=["vol_imbalance", "sign_imbalance"], std_level=2, remove=False, verbose=False
+    df: pd.DataFrame, T=None, columns=["vol_imbalance", "sign_imbalance", "R"], std_level=2, remove=False, verbose=False
 ):
     # TODO: default columns to None
     """

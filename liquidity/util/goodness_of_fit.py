@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import stats
 from typing import List, Tuple
+from sklearn.metrics import mean_absolute_error
 
 
 # TODO: remove bic from loglikelihoods, then we don't have to make assumptions about distribution of residuals
@@ -119,22 +120,9 @@ def get_goodness_of_fit(
     rsquared, adjusted_rsquared = compute_rsquared(residuals, y_values, params)
 
     # MAPE metric is an error metric that is less sensitive to outliers than root Mean Squared Error (MAE).
-    # from sklearn.metrics import mean_absolute_error
-    # mae = mean_absolute_error(y_true, y_pred)
+
+    mae = mean_absolute_error(y_values, model_predictions)
     mape = np.mean(np.abs((y_values - model_predictions) / y_values)) * 100
 
-    # Compute the KS statistic and p-value
-    result = stats.ks_2samp(y_values, model_predictions, alternative="two-sided")
-    ks_statistic = result.statistic
 
-    # Compute BIC
-    n = len(y_values)
-    p = len(params)
-    if bic_method == "log_likelihood":
-        log_likelihoods = loglikelihoods(residuals)
-        loglikelihood = np.sum(log_likelihoods)  # sum over all data points
-        bic = compute_bic_from_loglikelihood(loglikelihood, len(params), n)
-    else:
-        bic = compute_bic_from_residuals(residuals, p)
-
-    return ks_statistic, bic, mape, adjusted_rsquared
+    return mae, mape, adjusted_rsquared

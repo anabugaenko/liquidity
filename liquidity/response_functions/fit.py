@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 import pandas as pd
 from typing import List
@@ -6,7 +7,6 @@ from scipy.optimize import curve_fit, least_squares
 from powerlaw_function import Fit
 
 from liquidity.util.utils import bin_data_into_quantiles
-from liquidity.response_functions.price_response_functions import compute_aggregate_features
 from liquidity.response_functions.functional_form import scaling_function, scaling_form, scaling_form_reflect
 
 
@@ -53,6 +53,8 @@ def rescaled_form_fit_results(features_df, alpha, beta, MAX_LAG=1000):
 
 
 def fit_scaling_function(df, x_col="vol_imbalance", y_col="R", y_reflect=False, verbose=False):
+    # TODO: still required?
+    # Fit on non normalized data
     x_values = -df[x_col].values if y_reflect else df[x_col].values
     y_values = df[y_col].values
     initial_guess = [1.0, 1.0]
@@ -82,7 +84,7 @@ def fit_scaling_form(data_all, y_reflect=False, f_scale=0.2, verbose=False):
     try:
         x_values = np.transpose(data_all.iloc[:, :2].to_numpy())
         y_values = data_all.iloc[:, 2].to_numpy()
-        initial_guess = [0.5, 0.5, 1.0, 1.0, 1.0]
+        initial_guess = [0.1, 0.1, 0.1, 0.1, 0.1]
         popt, pcov = curve_fit(
             f=fit_func,
             xdata=x_values,
@@ -122,22 +124,28 @@ def fit_rescaled_form(x, y, known_alpha=None, know_beta=None):
         return y - _rescaled_form(x, *params)
 
     num_params = _rescaled_form.__code__.co_argcount - 1
-    initial_guess = [0.5] * num_params
+    initial_guess = [0.1] * num_params
+
     result = least_squares(_residuals, initial_guess, args=(x, y), loss="soft_l1")
     return result.x
 
 
-# FIXME: rename to _find_shape_parameters
-def compute_shape_parameters(df: pd.DataFrame, durations: List = [5, 10, 20, 50, 100], **kwargs):
+def find_shape_parameters(normalised_aggregate_data: pd.DataFrame):
     """
     Computes shape parameters Alpha and Beta from known features
     """
-    data_norm = compute_aggregate_features(df, durations, **kwargs)
-    popt, pcov, fit_func = fit_scaling_form(data_norm[["vol_imbalance", "T", "R"]])
-    return popt, pcov, fit_func, data_norm
+    popt, pcov, fit_func = fit_scaling_form(normalised_aggregate_data[["vol_imbalance", "T", "R"]])
+    return popt, pcov, fit_func
+
+# def find_shape_parameters(normalised_aggregate_data: pd.DataFrame):
+#     """
+#     Computes shape parameters Alpha and Beta from known features
+#     """
+#     residuals, params, fitted_values = fit_scaling_form(normalised_aggregate_data[["vol_imbalance", "T", "R"]])
+#     return residuals, params, fitted_values
 
 
-def _find_scaling_exponents(fitting_method: str, xy_values: pd.DataFrame) -> Fit:
+def find_scaling_exponents(fitting_method: str, xy_values: pd.DataFrame) -> Fit:
     """Fits the data using the specified method and returns the fitting results."""
     if fitting_method == "MLE":
         return Fit(xy_values, xmin_distance="BIC", xmin_index=10)
@@ -168,8 +176,8 @@ def compute_RN_QN(features_df, alpha, beta, fitting_method="MLE", **kwargs):
     RN_df = RN_df[RN_df["y_values"] >= RN_df["y_values"].iloc[10]]
     QN_df = QN_df[QN_df["y_values"] >= QN_df["y_values"].iloc[10]]
 
-    RN_fit_object = _find_scaling_exponents(fitting_method, RN_df)
-    QN_fit_object = _find_scaling_exponents(fitting_method, QN_df)
+    RN_fit_object = find_scaling_exponents(fitting_method, RN_df)
+    QN_fit_object = find_scaling_exponents(fitting_method, QN_df)
 
     return RN_df, QN_df, RN_fit_object, QN_fit_object
 
@@ -194,7 +202,6 @@ def renormalise(df: pd.DataFrame, params, durations, q=31):
 
         result["vol_imbalance"] = result["vol_imbalance"] / T**kappa
         result["R"] = result["R"] / T**chi
-
         binned_result = bin_data_into_quantiles(result, q=q, duplicates="drop")
         param = fit_scaling_form(binned_result)
 
@@ -204,3 +211,4 @@ def renormalise(df: pd.DataFrame, params, durations, q=31):
             print(f"Failed to fit for lag {T}")
 
     return fit_param
+

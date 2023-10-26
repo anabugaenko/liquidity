@@ -1,11 +1,7 @@
-from typing import List
-
 import pandas as pd
 import numpy as np
 
-from liquidity.util.utils import smooth_outliers
-from liquidity.util.orderbook import rename_orderbook_columns
-from liquidity.response_functions.features import daily_orderbook_states
+from liquidity.util.utils import smooth_outliers, normalise_by_daily
 
 
 def _price_response_function(df_: pd.DataFrame, lag: int = 1, log_prices=False) -> pd.DataFrame:
@@ -43,92 +39,28 @@ def compute_price_response(
     return data
 
 
-def _conditional_aggregate_impact(df_: pd.DataFrame, T: int, response_column: str, log_prices=False) -> pd.DataFrame:
-    """
-    RN(ΔV, ΔƐ)
-    At the moment assumes conditioning on sign dependent variable
-
-    From a given timeseries of transactions  compute many lag price response
-    (T specifies number of lags).
-
-    TODO: Implement price changing and none price changing flag for R(v, 1) and R(epsilon, 1),
-
-    """
-    # queue length - sign=("sign", "sum"),
-    # volume profile - volume=("norm_size", sum)
-
-    # TODO: this should be part of orderbook states generation
-    if "norm_size" in df_.columns:
-        df_["signed_volume"] = df_["norm_size"] * df_["sign"]
-    elif "norm_trade_volume" in df_.columns:
-        df_["signed_volume"] = df_["norm_trade_volume"] * df_["sign"]
-    else:
-        df_["signed_volume"] = df_["size"] * df_["sign"]
-
-    df_agg = df_.groupby(df_.index // T).agg(
-        event_timestamp=("event_timestamp", "first"),
-        midprice=("midprice", "first"),
-        sign=("sign", "first"),
-        signed_volume=("signed_volume", "first"),
-        vol_imbalance=("signed_volume", "sum"),
-        sign_imbalance=("sign", "sum"),
-        daily_R1=("daily_R1", "first"),
-        daily_vol=("daily_vol", "first"),
-        daily_num=("daily_num", "first"),
-        # price_changing=('price_changing', 'first')
-    )
-    if not log_prices:
-        df_agg[response_column] = df_agg["midprice"].diff().shift(-1).fillna(0)  # FIXME: excludes the sign atm
-    else:
-        df_agg[response_column] = np.log(df_agg["midprice"].shift(-1).fillna(0)) - np.log(df_agg["midprice"])
-    return df_agg
-
-
-def compute_conditional_aggregate_impact(
-    df: pd.DataFrame, T: int, normalise: bool = True, remove_outliers: bool = True, log_prices=False
-) -> pd.DataFrame:
+# TODO: rename to conditional aggregate impact
+def compute_conditional_aggregate_impact(df: pd.DataFrame, normalise: bool = True, log_prices=False) -> pd.DataFrame:
     """
     Aggregate features
     RN(ΔV, ΔƐ)
+    Assumes conditioning on sign dependent variable hence
+    do not include sign in price response computation
     """
-
-    def _normalise_axis(df: pd.DataFrame) -> pd.DataFrame:
-        if "vol_imbalance" in df.columns:
-            df["vol_imbalance"] = df["vol_imbalance"] / df["daily_vol"]
-        if "sign_imbalance" in df.columns:
-            df["sign_imbalance"] = df["sign_imbalance"] / df["daily_num"]
-        if "R" in df.columns:
-            df["R"] = df["R"] / df["daily_R1"]
-        return df
 
     # TODO: Implement compute_individual_impact (condition on volume and  sign of previous order)
     data = df.copy()
     if type(data["event_timestamp"].iloc[0]) != pd.Timestamp:
         data["event_timestamp"] = data["event_timestamp"].apply(lambda x: pd.Timestamp(x))
-    data = rename_orderbook_columns(data)
-    data = daily_orderbook_states(data)
-    data = _conditional_aggregate_impact(data, T=T, response_column=f"R{T}", log_prices=log_prices)
+
+    if not log_prices:
+        data["R"] = data["midprice"].diff().shift(-1).fillna(0)
+    else:
+        data["R"] = np.log(data["midprice"].shift(-1).fillna(0)) - np.log(data["midprice"])
 
     if normalise:
-        data = _normalise_axis(data)
+        data = normalise_by_daily(data)
 
-    if remove_outliers:
-        data = smooth_outliers(data, T=T)
+    data = data[["vol_imbalance", "T", "R"]]
+
     return data
-
-
-def compute_aggregate_features(df: pd.DataFrame, durations: List[int], **kwargs) -> pd.DataFrame:
-    """
-    TODO: move to features and take out impact computation
-    """
-    df["event_timestamp"] = df["event_timestamp"].apply(lambda x: pd.Timestamp(x))
-    df["date"] = df["event_timestamp"].apply(lambda x: x.date())
-    results_ = []
-    for i, T in enumerate(durations):
-        lag_data = compute_conditional_aggregate_impact(df, T=T, **kwargs)
-        lag_data["R"] = lag_data[f"R{T}"]
-        lag_data = lag_data.drop(columns=f"R{T}")
-        lag_data["T"] = T
-        results_.append(lag_data)
-
-    return pd.concat(results_)
