@@ -7,7 +7,8 @@ from scipy.optimize import curve_fit, least_squares
 from powerlaw_function import Fit
 
 from liquidity.util.utils import bin_data_into_quantiles
-from liquidity.response_functions.functional_form import scaling_function, scaling_form, scaling_form_reflect
+from liquidity.response_functions.functional_form import scaling_function, scaling_form, scaling_form_reflect, \
+    rescaled_form
 
 
 class RescaledFormFitResult:
@@ -117,8 +118,7 @@ def fit_rescaled_form(x, y, known_alpha=None, know_beta=None):
         """
         This version treats RN and QN as constants to be found during optimisation.
         """
-
-        return RN * scaling_function(Q / QN, known_alpha, know_beta)
+        return rescaled_form(Q, RN, QN, known_alpha, know_beta)
 
     def _residuals(params, x, y):
         return y - _rescaled_form(x, *params)
@@ -152,7 +152,7 @@ def find_scaling_exponents(fitting_method: str, xy_values: pd.DataFrame) -> Fit:
     return Fit(xy_values, nonlinear_fit_method=fitting_method, xmin_distance="BIC")
 
 
-def compute_RN_QN(features_df, alpha, beta, fitting_method="MLE", **kwargs):
+def compute_scale_factors(features_df, alpha, beta, fitting_method="MLE", **kwargs):
     """
     Helper function to extract series of RN and QN
     from fit param for each N
@@ -179,7 +179,7 @@ def compute_RN_QN(features_df, alpha, beta, fitting_method="MLE", **kwargs):
     RN_fit_object = find_scaling_exponents(fitting_method, RN_df)
     QN_fit_object = find_scaling_exponents(fitting_method, QN_df)
 
-    return RN_df, QN_df, RN_fit_object, QN_fit_object
+    return RN_df, QN_df, RN_fit_object, QN_fit_object, fit_results_per_lag
 
 
 # FIXME: used where?
