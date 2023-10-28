@@ -31,7 +31,7 @@ def scaling_function(x: float, alpha: float, beta: float) -> float:
     return x / np.power(1 + np.power(abs(x), alpha), beta / alpha)
 
 
-def scaling_form(
+def rescaled_form(
     orderflow_imbalance: np.array, chi: float, kappa: float, alpha: float, beta: float, gamma: float
 ) -> np.array:
     """
@@ -72,7 +72,7 @@ def scaling_form(
     return np.power(T, chi) * scaling_function(normalised_imbalance, alpha, beta) * gamma  # replace gamma with const
 
 
-def scaling_form_reflect(orderflow_imbalance, chi, kappa, alpha, beta, gamma):
+def rescaled_form_reflect(orderflow_imbalance, chi, kappa, alpha, beta, gamma):  # FIXME: pass - imbalance instead
     """
     The scaling form (sigmoid) where the scaling function is inverted on the y-axis).
     Used when fitting :math: L(t) := (LO, CA, QA)
@@ -83,7 +83,7 @@ def scaling_form_reflect(orderflow_imbalance, chi, kappa, alpha, beta, gamma):
     return np.power(T, chi) * scaling_function(normalised_imbalance, alpha, beta) * gamma
 
 
-def rescaled_form(imbalance: float, RN: float, QN: float, alpha: float, beta: float) -> float:
+def scaling_form(imbalance: float, RN: float, QN: float, alpha: float, beta: float) -> float:
     """
     Computes the rescaled impact based on the empirical relationship observed in financial markets.
 

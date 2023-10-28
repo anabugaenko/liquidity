@@ -7,11 +7,11 @@ from scipy.optimize import curve_fit, least_squares
 from powerlaw_function import Fit
 
 from liquidity.util.utils import bin_data_into_quantiles
-from liquidity.response_functions.functional_form import scaling_function, scaling_form, scaling_form_reflect, \
-    rescaled_form
+from liquidity.response_functions.functional_form import scaling_function, rescaled_form, rescaled_form_reflect, \
+    scaling_form
 
 
-class RescaledFormFitResult:
+class ScalingFormFitResult:
     T: int
     param: List  # RN, QN
     alpha: float
@@ -37,7 +37,7 @@ class FitResult:
         self.data = data
 
 
-def rescaled_form_fit_results(features_df, alpha, beta, MAX_LAG=1000):
+def scaling_form_fit_results(features_df, alpha, beta, MAX_LAG=1000):
     # Rename
     fit_results = {}
     for lag in range(1, MAX_LAG):
@@ -47,8 +47,8 @@ def rescaled_form_fit_results(features_df, alpha, beta, MAX_LAG=1000):
         binned_result = bin_data_into_quantiles(result, x_col="vol_imbalance", duplicates="drop", q=31)
         x = binned_result["vol_imbalance"].values
         y = binned_result["R"].values
-        param = fit_rescaled_form(x, y, known_alpha=alpha, known_beta=beta)
-        fit_results[lag] = RescaledFormFitResult(lag, param, alpha, beta, pd.DataFrame({"x": x, "y": y}))
+        param = fit_scaling_form(x, y, known_alpha=alpha, known_beta=beta)
+        fit_results[lag] = ScalingFormFitResult(lag, param, alpha, beta, pd.DataFrame({"x": x, "y": y}))
 
     return fit_results
 
@@ -81,8 +81,8 @@ def rescaled_form_fit_results(features_df, alpha, beta, MAX_LAG=1000):
 #         return None, None, None
 
 
-def fit_scaling_form(data_all, y_reflect=False, f_scale=0.2, verbose=False):
-    fit_func = scaling_form if not y_reflect else scaling_form_reflect
+def fit_rescaled_form(data_all, y_reflect=False, f_scale=0.2, verbose=False):
+    fit_func = rescaled_form if not y_reflect else rescaled_form_reflect
 
     try:
         x_values = np.transpose(data_all.iloc[:, :2].to_numpy())
@@ -102,7 +102,7 @@ def fit_scaling_form(data_all, y_reflect=False, f_scale=0.2, verbose=False):
             # https://stackoverflow.com/questions/52275542/how-to-calculate-the-standard-error-from-a-variance-covariance-matrix
             print(f"standard deviations: {np.sqrt(np.diag(pcov))} \n")
 
-        fitted_values = scaling_form(x_values, *popt)
+        fitted_values = rescaled_form(x_values, *popt)
         # mape = np.mean(np.abs((y_values - fitted_values) / y_values)) * 100
 
         return popt, pcov, fit_func  # popt, mape, fit_func
@@ -111,7 +111,7 @@ def fit_scaling_form(data_all, y_reflect=False, f_scale=0.2, verbose=False):
         return None, None, None
 
 
-def fit_rescaled_form(x, y, known_alpha, known_beta):
+def fit_scaling_form(x, y, known_alpha, known_beta):
     """
     Fits scaling form with known parameters from scaling function
     """
@@ -120,7 +120,7 @@ def fit_rescaled_form(x, y, known_alpha, known_beta):
         """
         This version treats RN and QN as constants to be found during optimisation.
         """
-        return rescaled_form(Q, RN, QN, known_alpha, known_beta)
+        return scaling_form(Q, RN, QN, known_alpha, known_beta)
 
     def _residuals(params, x, y):
         return y - _rescaled_form(x, *params)
@@ -136,7 +136,7 @@ def find_shape_parameters(normalised_aggregate_data: pd.DataFrame):
     """
     Computes shape parameters Alpha and Beta from known features
     """
-    popt, pcov, fit_func = fit_scaling_form(normalised_aggregate_data[["vol_imbalance", "T", "R"]])
+    popt, pcov, fit_func = fit_rescaled_form(normalised_aggregate_data[["vol_imbalance", "T", "R"]])
     return popt, pcov, fit_func
 
 
@@ -155,7 +155,7 @@ def compute_scale_factors(features_df, alpha, beta, fitting_method="MLE", **kwar
     """
 
     # fit rescaled form at each N, returns dictionary of fitting results
-    fit_results_per_lag = rescaled_form_fit_results(features_df, alpha, beta, **kwargs)
+    fit_results_per_lag = scaling_form_fit_results(features_df, alpha, beta, **kwargs)
 
     RN_series = []
     QN_series = []
@@ -199,7 +199,7 @@ def renormalise(df: pd.DataFrame, params, durations, q=31):
         result["vol_imbalance"] = result["vol_imbalance"] / T**kappa
         result["R"] = result["R"] / T**chi
         binned_result = bin_data_into_quantiles(result, q=q, duplicates="drop")
-        param = fit_scaling_form(binned_result)
+        param = fit_rescaled_form(binned_result)
 
         if param[0] is not None:
             fit_param[T] = FitResult(T, param, binned_result)
