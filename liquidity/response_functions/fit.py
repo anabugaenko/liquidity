@@ -47,36 +47,38 @@ def rescaled_form_fit_results(features_df, alpha, beta, MAX_LAG=1000):
         binned_result = bin_data_into_quantiles(result, x_col="vol_imbalance", duplicates="drop", q=31)
         x = binned_result["vol_imbalance"].values
         y = binned_result["R"].values
-        param = fit_rescaled_form(x, y, known_alpha=alpha, know_beta=beta)
+        param = fit_rescaled_form(x, y, known_alpha=alpha, known_beta=beta)
         fit_results[lag] = RescaledFormFitResult(lag, param, alpha, beta, pd.DataFrame({"x": x, "y": y}))
 
     return fit_results
 
 
-def fit_scaling_function(df, x_col="vol_imbalance", y_col="R", y_reflect=False, verbose=False):
-    # TODO: still required?
-    # Fit on non normalized data
-    x_values = -df[x_col].values if y_reflect else df[x_col].values
-    y_values = df[y_col].values
-    initial_guess = [1.0, 1.0]
-    popt, pcov = curve_fit(
-        f=scaling_function,
-        xdata=x_values,
-        ydata=y_values,
-        p0=initial_guess,
-        bounds=(0, np.inf),
-        loss="soft_l1",
-        f_scale=0.2,
-    )
-
-    if verbose:
-        print(f"parameters found: {popt}")
-        print(f"standard deviations: {np.sqrt(np.diag(pcov))} \n")
-
-    fitted_values = scaling_function(x_values, *popt)
-    mape = np.mean(np.abs((y_values - fitted_values) / y_values)) * 100
-
-    return popt, mape, scaling_function
+# def fit_scaling_function(df, x_col="vol_imbalance", y_col="R", y_reflect=False, verbose=False):
+#
+#     # Fit on non normalized data
+#
+#     try:
+#         x_values = -df[x_col].values if y_reflect else df[x_col].values
+#         y_values = df[y_col].values
+#         initial_guess = [0.1, 0.1]
+#         popt, pcov = curve_fit(
+#             f=scaling_function,
+#             xdata=x_values,
+#             ydata=y_values,
+#             p0=initial_guess,
+#             bounds=(0, np.inf),
+#             loss="soft_l1",
+#             f_scale=0.2,
+#         )
+#
+#         if verbose:
+#             print(f"parameters found: {popt}")
+#             print(f"standard deviations: {np.sqrt(np.diag(pcov))} \n")
+#         return popt, pcov, scaling_function
+#
+#     except RuntimeError:
+#         print("Optimal parameters not found: The maximum number of function evaluations is exceeded")
+#         return None, None, None
 
 
 def fit_scaling_form(data_all, y_reflect=False, f_scale=0.2, verbose=False):
@@ -109,7 +111,7 @@ def fit_scaling_form(data_all, y_reflect=False, f_scale=0.2, verbose=False):
         return None, None, None
 
 
-def fit_rescaled_form(x, y, known_alpha=None, know_beta=None):
+def fit_rescaled_form(x, y, known_alpha, known_beta):
     """
     Fits scaling form with known parameters from scaling function
     """
@@ -118,7 +120,7 @@ def fit_rescaled_form(x, y, known_alpha=None, know_beta=None):
         """
         This version treats RN and QN as constants to be found during optimisation.
         """
-        return rescaled_form(Q, RN, QN, known_alpha, know_beta)
+        return rescaled_form(Q, RN, QN, known_alpha, known_beta)
 
     def _residuals(params, x, y):
         return y - _rescaled_form(x, *params)
@@ -137,12 +139,6 @@ def find_shape_parameters(normalised_aggregate_data: pd.DataFrame):
     popt, pcov, fit_func = fit_scaling_form(normalised_aggregate_data[["vol_imbalance", "T", "R"]])
     return popt, pcov, fit_func
 
-# def find_shape_parameters(normalised_aggregate_data: pd.DataFrame):
-#     """
-#     Computes shape parameters Alpha and Beta from known features
-#     """
-#     residuals, params, fitted_values = fit_scaling_form(normalised_aggregate_data[["vol_imbalance", "T", "R"]])
-#     return residuals, params, fitted_values
 
 
 def find_scaling_exponents(fitting_method: str, xy_values: pd.DataFrame) -> Fit:

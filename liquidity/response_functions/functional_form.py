@@ -83,7 +83,6 @@ def scaling_form_reflect(orderflow_imbalance, chi, kappa, alpha, beta, gamma):
     return np.power(T, chi) * scaling_function(normalised_imbalance, alpha, beta) * gamma
 
 
-
 def rescaled_form(imbalance: float, RN: float, QN: float, alpha: float, beta: float) -> float:
     """
     Computes the rescaled impact based on the empirical relationship observed in financial markets.
