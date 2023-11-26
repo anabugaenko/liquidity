@@ -67,7 +67,7 @@ if __name__ == '__main__':
             daily_datas.append(MO_orderbook_states)
 
             # LO
-            # LO_orderbook_states = get_daily_trades_data(full_filename, date)
+            # LO_orderbook_states = get_daily_trades_data(full_filename, date, order_type='LO')
             # daily_datas.append(LO_orderbook_states)
 
         data_all = pd.concat(daily_datas)

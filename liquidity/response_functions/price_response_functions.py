@@ -61,6 +61,6 @@ def compute_conditional_aggregate_impact(df: pd.DataFrame, normalise: bool = Tru
     if normalise:
         data = normalise_by_daily(data)
 
-    data = data[["vol_imbalance", "T", "R"]]
+    data = data[["vol_imbalance", "T", "R",  "daily_R1"]]
 
     return data

@@ -58,6 +58,15 @@ def normalise_by_daily(df: pd.DataFrame) -> pd.DataFrame:
     if "R" in df.columns:
         df["R"] = df["R"] / df["daily_R1"]
     return df
+# def normalise_by_daily(df: pd.DataFrame) -> pd.DataFrame:
+#     df = df.copy()
+#     if "vol_imbalance" in df.columns:
+#         df["vol_imbalance"] = df["vol_imbalance"] / df["daily_vol"] * df["daily_vol"].mean()
+#     if "sign_imbalance" in df.columns:
+#         df["sign_imbalance"] = df["sign_imbalance"] / df["daily_num"] * df["daily_num"].mean()
+#     # if "R" in df.columns:
+#     #     df["R"] = df["R"] / df["daily_R1"]
+#     return df
 
 
 def bin_data_into_quantiles(df, x_col="vol_imbalance", y_col="R", q=100, duplicates="raise"):
