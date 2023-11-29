@@ -12,8 +12,6 @@ from hurst_exponent.hurst_exponent import standard_hurst, generalized_hurst
 
 
 # Helper functions
-
-
 def pool_worker(args):
     # Define a pool worker function
     stock, values, option, acf_range = args

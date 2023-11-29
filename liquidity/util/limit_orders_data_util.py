@@ -1,7 +1,7 @@
 import pandas as pd
 
 from liquidity.util.utils import remove_midprice_orders
-from liquidity.response_functions.features import order_signs
+from liquidity.features import order_signs
 from liquidity.util.orderbook import (
     load_l3_data,
     select_trading_hours,

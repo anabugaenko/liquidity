@@ -1,7 +1,7 @@
 import pandas as pd
 
 from liquidity.util.orderbook import load_l3_data, select_trading_hours, select_top_book, select_columns, shift_prices
-from liquidity.response_functions.features import order_signs
+from liquidity.features import order_signs
 from liquidity.util.utils import add_mean_queue_lengths
 
 

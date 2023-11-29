@@ -12,8 +12,6 @@ from powerlaw import Fit, plot_pdf, plot_cdf, plot_ccdf
 
 
 # Helper functions
-
-
 def fit_powerlaw(
     data_dict: Union[str, Dict[str, List[float]]],
     series: Union[List[float], None] = None,
