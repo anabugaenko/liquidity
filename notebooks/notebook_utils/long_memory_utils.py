@@ -12,10 +12,36 @@ from hurst_exponent.hurst_exponent import standard_hurst, generalized_hurst
 
 
 # Helper functions
+
+
 def pool_worker(args):
     # Define a pool worker function
     stock, values, option, acf_range = args
     return compute_acf(stock, values, option=option, acf_range=acf_range)
+
+
+def construct_xy(sample: pd.Series, name: str) -> pd.DataFrame:
+    """
+    Constructs a DataFrame with x-axis and y values for plotting Autocorrelation Function (ACF) from a given sample series.
+
+    The function creates x-values based on the index range of the sample, starting from 1.
+    The y-values are directly taken from the provided sample series.
+
+    :param sample: A pandas Series representing y-values (e.g., ACF values).
+    :param name: A string representing the name of the sample (e.g., stock name) for error reporting.
+
+    :return: A pandas DataFrame with columns 'x_values' and 'y_values' ready for plotting.
+
+    :raises ValueError: If the size of the given sample does not match the constructed y-values.
+    """
+
+    y_values = list(sample)
+    if len(sample) != len(y_values):
+        raise ValueError(f"Sample sizes mismatch for {name}.")
+
+    xy_df = pd.DataFrame({"x_values": range(1, len(y_values) + 1), "y_values": y_values})
+
+    return xy_df
 
 
 def compute_acf(
@@ -41,32 +67,12 @@ def compute_acf(
     return stock, result
 
 
-def construct_xy(sample: pd.Series, name: str) -> pd.DataFrame:
-    """
-    Constructs a DataFrame with x and y values for plotting Autocorrelation Function (ACF) from a given sample series.
-
-    The function creates x-values based on the index range of the sample, starting from 1.
-    The y-values are directly taken from the provided sample series.
-
-    :param sample: A pandas Series representing y-values (e.g., ACF values).
-    :param name: A string representing the name of the sample (e.g., stock name) for error reporting.
-
-    :return: A pandas DataFrame with columns 'x_values' and 'y_values' ready for plotting.
-
-    :raises ValueError: If the size of the given sample does not match the constructed y-values.
-    """
-
-    y_values = list(sample)
-    if len(sample) != len(y_values):
-        raise ValueError(f"Sample sizes mismatch for {name}.")
-
-    xy_df = pd.DataFrame({"x_values": range(1, len(y_values) + 1), "y_values": y_values})
-
-    return xy_df
-
-
 def compute_acfs(
-    filename: str, data: Dict[str, Union[float, int]], option: str = "linear", acf_range: int = 1001, processes: int = 4
+    filename: str,
+    data: Dict[str, Union[float, int]],
+    option: str = "linear",
+    acf_range: int = 1001,
+    processes: int = 4,
 ) -> Dict[str, Union[float, int]]:
     """
     Computes and loads autocorrelation functions (ACF) for given returns based on the specified option.
@@ -126,13 +132,21 @@ def compute_hurst_exponent(
     elif method == "generalized":
         hurst_val, fit = generalized_hurst(data, **kwargs)
     else:
-        raise ValueError("Invalid method provided. Choose either 'standard' or 'generalized'.")
+        raise ValueError(
+            "Invalid method provided. Choose either 'standard' or 'generalized'."
+        )
 
     fit_dict = fit.powerlaw.to_dictionary()
 
     # Update the dictionary with Hurst values, stock name, and random variate
     if fit_dict.get("function_name") == "powerlaw":
-        fit_dict.update({f"{method}_hurst": hurst_val, "stock": stock, "random_variate": random_variate})
+        fit_dict.update(
+            {
+                f"{method}_hurst": hurst_val,
+                "stock": stock,
+                "random_variate": random_variate,
+            }
+        )
         return fit_dict, fit
     return None, None
 

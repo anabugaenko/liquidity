@@ -1,7 +1,4 @@
-import pandas
 import pandas as pd
-import numpy as np
-from scipy import stats
 
 
 def remove_midprice_orders(df_: pd.DataFrame) -> pd.DataFrame:
@@ -9,43 +6,44 @@ def remove_midprice_orders(df_: pd.DataFrame) -> pd.DataFrame:
     return df_[~mask]
 
 
-def add_mean_queue_lengths(lob_data: pd.DataFrame) -> pd.DataFrame:
-    lob_data["ask_queue_size_mean"] = lob_data["best_ask_size"].mean()
-    lob_data["bid_queue_size_mean"] = lob_data["best_bid_size"].mean()
-
-    return lob_data
-
-
-def remove_first_daily_prices(df: pd.DataFrame) -> pd.DataFrame:
+def remove_first_daily_prices(orderbook_states: pd.DataFrame) -> pd.DataFrame:
     """
     If the price deviated significantly during auction hours the first
     returns on the day would be considered outliers.
     """
-    df_ = df.copy()
-    df_["indx"] = df_.index
-    df_ = df_.set_index("event_timestamp")
-    first_days_indx = df_.groupby(pd.Grouper(freq="D")).first()["indx"]
+    data_ = orderbook_states.copy()
+    data_["indx"] = data_.index
+    data_ = data_.set_index("event_timestamp")
+    first_days_indx = data_.groupby(pd.Grouper(freq="D")).first()["indx"]
     first_days_indx = first_days_indx.dropna().astype(int)
-    df_ = df_.loc[~df_["indx"].isin(first_days_indx)]
-    return df_.drop(columns=["indx"]).reset_index()
+    data_ = data_.loc[~data_["indx"].isin(first_days_indx)]
+    return data_.drop(columns=["indx"]).reset_index()
 
 
-# FIXME: move to market impact package?
-def normalise_size(df_: pd.DataFrame, size_col_name: str = "size") -> pd.DataFrame:
+def normalise_size(
+    orderbook_states: pd.DataFrame, column_name: str = "size"
+) -> pd.DataFrame:
     """
-    Normalise trade size by the average volume on the same side best quote.
+    Normalise order size :math:`v_x` by the average volume on the same side best quote.
+    .. math::
+        v = v/\overline{V}_{\mathrm{best}}
     """
-    # ask_mean_vol = df_["ask_volume"].mean()
-    # bid_mean_vol = df_["bid_volume"].mean()
+    data_ = orderbook_states.copy()
 
-    ask_mean_vol = df_["ask_queue_size_mean"].mean()
-    bid_mean_vol = df_["bid_queue_size_mean"].mean()
+    # Compute avarage over average
+    ask_mean_volume = data_[
+        "ask_queue_size_mean"
+    ].mean()  # ask_mean_vol = df_["ask_volume"].mean()
+    bid_mean_volume = data_[
+        "bid_queue_size_mean"
+    ].mean()  # bid_mean_vol = df_["bid_volume"].mean()
 
     def _normalise(row):
         if row["side"] == "ASK":
-            return row[size_col_name] / ask_mean_vol
+            return row[column_name] / ask_mean_volume
         else:
-            return row[size_col_name] / bid_mean_vol
+            return row[column_name] / bid_mean_volume
 
-    df_["norm_size"] = df_.apply(_normalise, axis=1)
-    return df_
+    data_["norm_size"] = data_.apply(_normalise, axis=1)
+
+    return data_

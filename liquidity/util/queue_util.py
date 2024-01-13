@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 
 
+# TODO: move to features and depricate file
 def calculate_v_over_vbest(row):
     if row["side"] == "ASK":
         return row["size"] / row["ask_volume"]
@@ -21,6 +22,16 @@ def get_v_over_vbest_ratios(mo_df: pd.DataFrame):
     return df_.apply(calculate_v_over_vbest, axis=1)
 
 
+def get_v_over_vbest_distribution(df, stock, n=100):
+    series = get_v_over_vbest_ratios(df)
+    bins, values = get_bins_and_values(series, n=n)
+
+    df_ = pd.DataFrame(bins, values).reset_index()
+    df_.columns = ["value", "bin"]
+    df_["style"] = stock
+    return df_
+
+
 def get_bins_and_values(series, n=100):
     bins = np.linspace(0, 2, n)
     weightsa = np.ones_like(series) / float(len(series))
@@ -30,13 +41,3 @@ def get_bins_and_values(series, n=100):
     values = hist[0]
 
     return bins, values
-
-
-def get_v_over_vbest_distribution(df, stock, n=100):
-    series = get_v_over_vbest_ratios(df)
-    bins, values = get_bins_and_values(series, n=n)
-
-    df_ = pd.DataFrame(bins, values).reset_index()
-    df_.columns = ["value", "bin"]
-    df_["style"] = stock
-    return df_

@@ -22,7 +22,7 @@ def fit_powerlaw(
 
     Parameters:
     - data_dict (Union[str, Dict[str, List[float]]]): Either a string label (e.g. stock name) or a dictionary mapping
-                                                      labels to data series.
+      labels to data series.
     - series (Union[List[float], None], optional): Data series if a single label is provided. Defaults to None.
     - filename (str, optional): Path to save serialized fit objects. If provided, saves the data. Defaults to None.
 
@@ -88,7 +88,9 @@ def load_fit_objects(filename):
     return fit_objects
 
 
-def get_fitting_params(fit_input: Union[Dict[str, Fit], Tuple[str, Fit]], distribution: str) -> pd.DataFrame:
+def get_fitting_params(
+    fit_input: Union[Dict[str, Fit], Tuple[str, Fit]], distribution: str
+) -> pd.DataFrame:
     """
     Retrieves fitting parameters for a specified distribution across stocks.
 
@@ -123,7 +125,9 @@ def get_fitting_params(fit_input: Union[Dict[str, Fit], Tuple[str, Fit]], distri
     def get_params(fit, dist) -> List:
         """Utility to fetch distribution parameters and handle errors."""
         try:
-            return [getattr(fit, dist).__getattribute__(param) for param in param_map[dist]]
+            return [
+                getattr(fit, dist).__getattribute__(param) for param in param_map[dist]
+            ]
         except AttributeError:
             return [np.nan] * len(param_map[dist])
 
@@ -133,7 +137,12 @@ def get_fitting_params(fit_input: Union[Dict[str, Fit], Tuple[str, Fit]], distri
         params = get_params(fit, distribution)
         base_result.update(zip(param_map[distribution], params))
         base_result.update(
-            {"xmin": fit.xmin, "KS Distance": getattr(fit, distribution).D if hasattr(fit, distribution) else np.nan}
+            {
+                "xmin": fit.xmin,
+                "KS Distance": getattr(fit, distribution).D
+                if hasattr(fit, distribution)
+                else np.nan,
+            }
         )
         results.append(base_result)
 
@@ -177,7 +186,9 @@ def distribution_compare(
     def get_params(fit, dist) -> List:
         """Utility to fetch distribution parameters and handle errors."""
         try:
-            return [getattr(fit, dist).__getattribute__(param) for param in param_map[dist]]
+            return [
+                getattr(fit, dist).__getattribute__(param) for param in param_map[dist]
+            ]
         except AttributeError:
             return [np.nan] * len(param_map[dist])
 
@@ -194,8 +205,12 @@ def distribution_compare(
                 "KS Distance (" + distribution + ")": getattr(fit, distribution).D
                 if hasattr(fit, distribution)
                 else np.nan,
-                "Loglikelihood Ratio": fit.distribution_compare("power_law", distribution, normalized_ratio=True)[0],
-                "p-value": fit.distribution_compare("power_law", distribution, normalized_ratio=True)[1],
+                "Loglikelihood Ratio": fit.distribution_compare(
+                    "power_law", distribution, normalized_ratio=True
+                )[0],
+                "p-value": fit.distribution_compare(
+                    "power_law", distribution, normalized_ratio=True
+                )[1],
             }
         )
         results.append(base_result)
@@ -250,7 +265,12 @@ def plot_distributions(stock_name, data):
 
 def plot_fit_objects(
     fit_input: Union[Dict[str, powerlaw.Fit], Tuple[str, powerlaw.Fit]],
-    distributions: List[str] = ["power_law", "truncated_power_law", "exponential", "lognormal"],
+    distributions: List[str] = [
+        "power_law",
+        "truncated_power_law",
+        "exponential",
+        "lognormal",
+    ],
 ) -> None:
     """
     Plot the Empirical CCDF, Power Law Fit, and comparison between Power Law
@@ -282,7 +302,6 @@ def plot_fit_objects(
         fig, axs = plt.subplots(3, num_stocks, figsize=(18, 14))
 
     # Color map for different distributions
-    # Color map for different distributions
     color_map = {
         "power_law": "g",
         "truncated_power_law": "c",
@@ -294,7 +313,15 @@ def plot_fit_objects(
 
     # Legend setup based on distributions
     legend_elements = [
-        mlines.Line2D([0], [0], color="b", marker=".", linestyle="None", markersize=10, label="Empirical Data")
+        mlines.Line2D(
+            [0],
+            [0],
+            color="b",
+            marker=".",
+            linestyle="None",
+            markersize=10,
+            label="Empirical Data",
+        )
     ]
     for dist in distributions:
         if dist in color_map:
@@ -331,15 +358,21 @@ def plot_fit_objects(
             if dist == "power_law":
                 y = fit.power_law.ccdf(x)
             elif dist == "lognormal":
-                lognormal_fit = powerlaw.Fit(fit.data, discrete=False, xmin=min(fit.data)).lognormal
+                lognormal_fit = powerlaw.Fit(
+                    fit.data, discrete=False, xmin=min(fit.data)
+                ).lognormal
                 y = lognormal_fit.ccdf(x)
             elif dist == "exponential":
-                exponential_fit = powerlaw.Fit(fit.data, discrete=False, xmin=min(fit.data)).exponential
+                exponential_fit = powerlaw.Fit(
+                    fit.data, discrete=False, xmin=min(fit.data)
+                ).exponential
                 y = exponential_fit.ccdf(x)
             axs[2, i].loglog(x, y, color_map[dist] + "--")
         axs[2, i].set_title(f"{stock_name} - Distributions Comparison")
         axs[2, i].grid(False)
-        axs[2, i].legend(handles=legend_elements, loc="upper right", fontsize="small", frameon=False)
+        axs[2, i].legend(
+            handles=legend_elements, loc="upper right", fontsize="small", frameon=False
+        )
 
     plt.tight_layout()
     plt.show()
