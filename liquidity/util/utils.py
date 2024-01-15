@@ -2,6 +2,9 @@ import pandas as pd
 
 
 def remove_midprice_orders(df_: pd.DataFrame) -> pd.DataFrame:
+    """
+    Removes events that occured at the mid-price.
+    """
     mask = df_["price"] == df_["midprice"]
     return df_[~mask]
 
