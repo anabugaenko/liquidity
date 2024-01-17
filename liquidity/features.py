@@ -137,7 +137,10 @@ def compute_orderbook_states(raw_orderbook_df: pd.DataFrame):
     return orderbook_states
 
 
-def compute_intraday_features(orderbook_states_df_: pd.DataFrame, bin_size: int,) -> pd.DataFrame:
+def compute_intraday_features(
+    orderbook_states_df_: pd.DataFrame,
+    bin_size: int,
+) -> pd.DataFrame:
     """
     Compute intra-day features for different order types using T sized bins in event-time.
     """
@@ -180,7 +183,10 @@ def compute_aggregate_features(
     data["date"] = data["event_timestamp"].apply(lambda x: x.date())
     results_ = []
     for T, bin_size in enumerate(bin_frequencies):
-        binned_data = compute_intraday_features(data, bin_size=bin_size,)
+        binned_data = compute_intraday_features(
+            data,
+            bin_size=bin_size,
+        )
         binned_data["T"] = bin_size
         results_.append(binned_data)
 

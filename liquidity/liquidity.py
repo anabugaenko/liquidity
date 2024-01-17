@@ -3,4 +3,3 @@
 # def rate_of_change()
 
 # def magnitude_of_change()
-
