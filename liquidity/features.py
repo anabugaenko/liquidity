@@ -6,8 +6,10 @@ from liquidity.util.utils import (
     normalise_size,
     remove_first_daily_prices,
 )
-from market_impact.response_functions import price_response
+
 from liquidity.util.orderbook import rename_orderbook_columns
+from market_impact.response_functions import price_response
+from market_impact.util.data_utils import bin_data_into_quantiles
 
 
 def signed_volume(df_: pd.DataFrame) -> pd.DataFrame:
@@ -135,11 +137,9 @@ def compute_orderbook_states(raw_orderbook_df: pd.DataFrame):
     return orderbook_states
 
 
-def compute_intraday_features(
-    orderbook_states_df_: pd.DataFrame, bin_size: int, normalize: bool = True
-) -> pd.DataFrame:
+def compute_intraday_features(orderbook_states_df_: pd.DataFrame, bin_size: int,) -> pd.DataFrame:
     """
-    Compute intra-day features for different order types using T sized bins.
+    Compute intra-day features for different order types using T sized bins in event-time.
     """
     data = orderbook_states_df_.copy()
 
@@ -170,7 +170,7 @@ def compute_aggregate_features(
     orderbook_states: pd.DataFrame, bin_frequencies: List[int]
 ) -> pd.DataFrame:
     """
-    Compute aggregate features for different order types using T sized binning frequencies.
+    Computes aggregate features for different order types using T sized binning frequencies.
     """
     # TODO: add option to normalize column by column via kwargs
 
@@ -179,10 +179,10 @@ def compute_aggregate_features(
     data["event_timestamp"] = data["event_timestamp"].apply(lambda x: pd.Timestamp(x))
     data["date"] = data["event_timestamp"].apply(lambda x: x.date())
     results_ = []
-    for i, bin_size in enumerate(bin_frequencies):
-        lag_data = compute_intraday_features(data, bin_size=bin_size, normalize=True)
-        lag_data["T"] = bin_size
-        results_.append(lag_data)
+    for T, bin_size in enumerate(bin_frequencies):
+        binned_data = compute_intraday_features(data, bin_size=bin_size,)
+        binned_data["T"] = bin_size
+        results_.append(binned_data)
 
     # Aggregate features
     aggregate_features = pd.concat(results_)
