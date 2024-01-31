@@ -149,6 +149,7 @@ def compute_intraday_features(
     intraday_features = data.groupby(data.index // bin_size).agg(
         # Orderbook states
         event_timestamp=("event_timestamp", "first"),
+        R1=("R1", "mean"),
         midprice=("midprice", "first"),
         sign=("sign", "first"),
         signed_volume=("signed_volume", "first"),
@@ -170,7 +171,9 @@ def compute_intraday_features(
 
 
 def compute_aggregate_features(
-    orderbook_states: pd.DataFrame, bin_frequencies: List[int]
+    orderbook_states: pd.DataFrame,
+    bin_frequencies: List[int],
+    remove_first: bool = True,
 ) -> pd.DataFrame:
     """
     Computes aggregate features for different order types using T sized binning frequencies.
@@ -192,6 +195,10 @@ def compute_aggregate_features(
 
     # Aggregate features
     aggregate_features = pd.concat(results_)
+
+    # Drop first daily price
+    if remove_first:
+        aggregate_features = remove_first_daily_prices(aggregate_features)
 
     return aggregate_features
 
@@ -216,12 +223,12 @@ def compute_returns(
             lambda x: pd.Timestamp(x)
         )
 
-    # Fractional returns
-    data["returns"] = data["midprice"].diff()
-
     # Drop first daily price
     if remove_first:
         data = remove_first_daily_prices(data)
+
+    # Fractional returns
+    data["returns"] = data["midprice"].diff()
 
     # Percentage (relative) returns
     # df["pct_returns"] = (df["midprice"] / df["midprice"].shift(1)) - 1 # using numpy's pct_change equivalent for robustness

@@ -11,8 +11,8 @@ def remove_midprice_orders(df_: pd.DataFrame) -> pd.DataFrame:
 
 def remove_first_daily_prices(orderbook_states: pd.DataFrame) -> pd.DataFrame:
     """
-    If the price deviated significantly during auction hours the first
-    returns on the day would be considered outliers.
+    If the price deviated significantly during auction hours
+    the first returns on the day are to be considered outliers.
     """
     data_ = orderbook_states.copy()
     data_["indx"] = data_.index
