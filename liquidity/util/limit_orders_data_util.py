@@ -58,7 +58,7 @@ def get_lo_data(filepath: str, date: str) -> pd.DataFrame:
     """
     data = load_l3_data(filepath)
     df = mean_queue_lengths(data)
-    df = select_trading_hours(date, data)
+    df = select_trading_hours(date, df)
     df = select_top_book(df)
     df = select_columns(df)
     df = shift_prices(df)
@@ -71,7 +71,7 @@ def get_lo_data(filepath: str, date: str) -> pd.DataFrame:
 def get_ca_data(filepath: str, date: str) -> pd.DataFrame:
     data = load_l3_data(filepath)
     df = mean_queue_lengths(data)
-    df = select_trading_hours(date, data)
+    df = select_trading_hours(date, df)
     df = select_top_book(df)
     df = select_columns(df)
     df = shift_prices(df)
@@ -81,14 +81,16 @@ def get_ca_data(filepath: str, date: str) -> pd.DataFrame:
     return df
 
 
-def get_qa_data(raw_daily_df: pd.DataFrame, date: str) -> pd.DataFrame:
-    df = select_trading_hours(date, raw_daily_df)
-    df = select_best_quotes(df)  # df = add_mean_queue_lengths(data)
+def get_qa_data(filepath: str, date: str) -> pd.DataFrame:
+    data = load_l3_data(filepath)
+    df = mean_queue_lengths(data)
+    df = select_trading_hours(date, df)
+    df = select_best_quotes(df)
     df = select_columns(df)
     df = shift_prices(df)
     df = remove_midprice_orders(df)
     df = remove_midprice_trades(df)
     df = order_signs(df)
-    df = df.groupby(["event_timestamp"]).last()
+    # df = df.groupby(["event_timestamp"]).last()
     df = df.reset_index()
     return df

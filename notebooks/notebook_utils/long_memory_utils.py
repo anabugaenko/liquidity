@@ -151,7 +151,7 @@ def compute_hurst_exponent(
     return None, None
 
 
-def get_acf_params(stock, data, **kwargs) -> Tuple[Union[None, Dict[str, Any]], Any]:
+def get_acf_params(stock: str, data: pd.DataFrame, **kwargs) -> Tuple[Union[None, Dict[str, Any]], Any]:
     """
     Fits a power law to the autocorrelation function (ACF) of a stock's data
     to extract the long-memory parameter γ (gamma).

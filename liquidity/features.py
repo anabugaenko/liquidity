@@ -8,8 +8,8 @@ from liquidity.util.utils import (
 )
 
 from liquidity.util.orderbook import rename_orderbook_columns
-from market_impact.response_functions import price_response
-from market_impact.util.data_utils import bin_data_into_quantiles
+from market_impact.util.utils import bin_data_into_quantiles
+from market_impact.response_functions import price_response, aggregate_impact
 
 
 def signed_volume(df_: pd.DataFrame) -> pd.DataFrame:
@@ -146,11 +146,20 @@ def compute_intraday_features(
     """
     data = orderbook_states_df_.copy()
 
+    if bin_size == 1:
+
+        data["sign_imbalance"] = data["sign"]
+        data["volume_imbalance"] = data["signed_volume"]
+        data["price_change_imbalance"] = data["price_changing"]
+
+        return data
+
+    data["returns"] = data["R1"] * data["sign"]
     intraday_features = data.groupby(data.index // bin_size).agg(
         # Orderbook states
         event_timestamp=("event_timestamp", "first"),
-        R1=("R1", "mean"),
         midprice=("midprice", "first"),
+        summed_returns=("returns", "sum"),
         sign=("sign", "first"),
         signed_volume=("signed_volume", "first"),
         price_changing=("price_changing", "first"),
@@ -167,7 +176,9 @@ def compute_intraday_features(
         average_vol_at_best=("average_vol_at_best", "first"),
     )
 
-    return intraday_features
+    intraday_features["midprice_from_returns"] = (intraday_features["midprice"] + intraday_features["summed_returns"]).shift(1)
+
+    return intraday_features.dropna()
 
 
 def compute_aggregate_features(
@@ -184,6 +195,11 @@ def compute_aggregate_features(
 
     data["event_timestamp"] = data["event_timestamp"].apply(lambda x: pd.Timestamp(x))
     data["date"] = data["event_timestamp"].apply(lambda x: x.date())
+
+    # Drop first daily price
+    if remove_first:
+        data = remove_first_daily_prices(data)
+
     results_ = []
     for T, bin_size in enumerate(bin_frequencies):
         binned_data = compute_intraday_features(
@@ -195,10 +211,6 @@ def compute_aggregate_features(
 
     # Aggregate features
     aggregate_features = pd.concat(results_)
-
-    # Drop first daily price
-    if remove_first:
-        aggregate_features = remove_first_daily_prices(aggregate_features)
 
     return aggregate_features
 
@@ -248,3 +260,23 @@ def compute_returns(
     data["volatility"] = np.sqrt(data["variance"])
 
     return data
+
+
+def compute_impact_from_returns(raw_orderbook_data: pd.DataFrame, returns: pd.DataFrame,
+                                imbalance_column: str = "volume_imbalance", num_samples: int = 1000000,
+                                durations: List[int] = [10, 20, 50, 100, 150]) -> pd.DataFrame:
+    """
+    From timeseries or every event price changes and associated sign compute aggregate features.
+    """
+    aggregate_features = compute_aggregate_features(raw_orderbook_data, [1])
+    aggregate_impact_data = aggregate_impact(aggregate_features, conditional_variable=imbalance_column)
+
+    original_data = aggregate_impact_data.head(num_samples)
+
+    assert all(returns["event_timestamp"] == original_data["event_timestamp"]), "Data has different timestamp index"
+
+    model_aggregate_impact = original_data.copy()
+    model_aggregate_impact["R"] = returns["R1"]
+
+    new_aggregate_features = compute_aggregate_features(model_aggregate_impact, durations)
+    return aggregate_impact(new_aggregate_features, conditional_variable=imbalance_column)

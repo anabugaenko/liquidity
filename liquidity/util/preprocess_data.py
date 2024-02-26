@@ -49,8 +49,7 @@ def get_daily_orderbook_data(file_name, date: str = "2016-09-30", order_type: st
 
 if __name__ == "__main__":
     all_stocks = os.listdir(DATA_DIR_PATH)  # tsla = ["TSLA"]
-    all_stocks = [stock for stock in all_stocks if not stock.startswith(".")]
-    # all_stocks = ["AAPL", "TSLA", "GOOG", "MSFT"]
+    all_stocks = [stock for stock in all_stocks if not stock.startswith(".")]   # all_stocks = ["AAPL", "TSLA", "GOOG", "MSFT"]
     for stock in all_stocks:
         print(f"Computing data for {stock}")
         STOCK_PATH = f"{DATA_DIR_PATH}/{stock}/{YEAR}"
@@ -63,14 +62,14 @@ if __name__ == "__main__":
             full_filename = f"{STOCK_PATH}/{filename}"
 
             # MO
-            MO_orderbook_states = get_daily_trades_data(full_filename, date)
-            SAVE_PATH = os.path.join(ROOT_DIR, "data", "market_orders")
-            daily_datas.append(MO_orderbook_states)
+            # MO_orderbook_states = get_daily_trades_data(full_filename, date)
+            # SAVE_PATH = os.path.join(ROOT_DIR, "data", "market_orders")
+            # daily_datas.append(MO_orderbook_states)
 
             # LO
-            # LO_orderbook_states = get_daily_orderbook_data(full_filename, date, order_type="LO")
-            # SAVE_PATH = os.path.join(ROOT_DIR, "data", "limit_orders")
-            # daily_datas.append(LO_orderbook_states)
+            LO_orderbook_states = get_daily_orderbook_data(full_filename, date, order_type="LO")
+            SAVE_PATH = os.path.join(ROOT_DIR, "data", "limit_orders")
+            daily_datas.append(LO_orderbook_states)
 
             # CA
             # CA_orderbook_states = get_daily_orderbook_data(full_filename, date, order_type="CA")

@@ -43,19 +43,6 @@ def select_trading_hours(date: str, df_: pd.DataFrame, utc: bool = False) -> pd.
     return df_
 
 
-def select_top_book(df_: pd.DataFrame) -> pd.DataFrame:
-    """
-    Select top level of order book events (level 1)
-    or orders that arrive at a better price (level 0).
-    Level 0:
-    - for arriving LO: new best price
-    - for MO: level no longer exists after trade
-    - for CA: level no longer exists after removal
-    """
-    mask = (df_.price_level == 1) | (df_.price_level == 0)
-    return df_[mask]
-
-
 def select_columns(df_: pd.DataFrame) -> pd.DataFrame:
     """
     Select only relevant info about each event.
@@ -129,6 +116,19 @@ def select_best_quotes(df: pd.DataFrame) -> pd.DataFrame:
     price_level_mask = (df.price_level == 1) | (df.price_level == 0)
     old_price_level_mask = (df.old_price_level == 1) | (df.old_price_level == 0)
     return df[price_level_mask & old_price_level_mask]
+
+
+def select_top_book(df_: pd.DataFrame) -> pd.DataFrame:
+    """
+    Select top level of order book events (level 1)
+    or orders that arrive at a better price (level 0).
+    Level 0:
+    - for arriving LO: new best price
+    - for MO: level no longer exists after trade
+    - for CA: level no longer exists after removal
+    """
+    mask = (df_.price_level == 1) | (df_.price_level == 0)
+    return df_[mask]
 
 
 def clean_lob_data(date: str, df_raw: pd.DataFrame) -> pd.DataFrame:

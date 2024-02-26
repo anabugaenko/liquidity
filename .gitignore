@@ -162,6 +162,7 @@ cython_debug/
 .DS_Store
 
 # other
+*.pdf
 data/
 *.pkl
 /notebooks/archive/
