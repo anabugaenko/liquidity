@@ -26,9 +26,9 @@ def get_daily_orderbook_data(file_name, date: str = "2016-09-30", order_type: st
     """
     Get orderbook data, limit orders (LO), queues of active orders (QA) and cancellations (CA)
     """
-    orderbook_types = ["LO", "QA", "CA"]
+    order_types = ["LO", "QA", "CA"]
 
-    if order_type in orderbook_types:
+    if order_type in order_types:
         if order_type == "LO":
             raw_orders = get_lo_data(file_name, date)
             lob_states = compute_orderbook_states(raw_orders)
@@ -41,7 +41,7 @@ def get_daily_orderbook_data(file_name, date: str = "2016-09-30", order_type: st
             lob_states = compute_orderbook_states(raw_orders)
         else:
             raise ValueError(
-                f"Unknown order type: {order_type}. Expected one of {orderbook_types}."
+                f"Unknown order type: {order_type}. Expected one of {order_types}."
             )
 
     return lob_states
@@ -62,14 +62,14 @@ if __name__ == "__main__":
             full_filename = f"{STOCK_PATH}/{filename}"
 
             # MO
-            # MO_orderbook_states = get_daily_trades_data(full_filename, date)
-            # SAVE_PATH = os.path.join(ROOT_DIR, "data", "market_orders")
-            # daily_datas.append(MO_orderbook_states)
+            MO_orderbook_states = get_daily_trades_data(full_filename, date)
+            SAVE_PATH = os.path.join(ROOT_DIR, "data", "market_orders")
+            daily_datas.append(MO_orderbook_states)
 
             # LO
-            LO_orderbook_states = get_daily_orderbook_data(full_filename, date, order_type="LO")
-            SAVE_PATH = os.path.join(ROOT_DIR, "data", "limit_orders")
-            daily_datas.append(LO_orderbook_states)
+            # LO_orderbook_states = get_daily_orderbook_data(full_filename, date, order_type="LO")
+            # SAVE_PATH = os.path.join(ROOT_DIR, "data", "limit_orders")
+            # daily_datas.append(LO_orderbook_states)
 
             # CA
             # CA_orderbook_states = get_daily_orderbook_data(full_filename, date, order_type="CA")

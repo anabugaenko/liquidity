@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 
-# TODO: move to features and depricate file
+# TODO: move to features and depricate file?
 def calculate_v_over_vbest(row):
     if row["side"] == "ASK":
         return row["size"] / row["ask_volume"]
