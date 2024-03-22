@@ -1,9 +1,9 @@
 import os
 import pandas as pd
 
+from liquidity.features import compute_orderbook_states
 from liquidity.util.trades_data_util import get_trades_data
 from liquidity.util.limit_orders_data_util import get_lo_data, get_qa_data, get_ca_data
-from liquidity.features import compute_orderbook_states
 
 
 # FIXME: make path google collab directory specific
@@ -25,6 +25,7 @@ def get_daily_trades_data(file_name, date: str = "2016-09-30"):
 def get_daily_orderbook_data(file_name, date: str = "2016-09-30", order_type: str = "LO"):
     """
     Get orderbook data, limit orders (LO), queues of active orders (QA) and cancellations (CA)
+    FIXME: currently takes dataframe not string "file_name"
     """
     order_types = ["LO", "QA", "CA"]
 
@@ -35,7 +36,6 @@ def get_daily_orderbook_data(file_name, date: str = "2016-09-30", order_type: st
         elif order_type == "CA":
             raw_orders = get_ca_data(file_name, date)
             lob_states = compute_orderbook_states(raw_orders)
-        # FIXME: currently takes dataframe not string "file_name"
         elif order_type == "QA":
             raw_orders = get_qa_data(file_name, date)
             lob_states = compute_orderbook_states(raw_orders)
@@ -62,9 +62,9 @@ if __name__ == "__main__":
             full_filename = f"{STOCK_PATH}/{filename}"
 
             # MO
-            MO_orderbook_states = get_daily_trades_data(full_filename, date)
-            SAVE_PATH = os.path.join(ROOT_DIR, "data", "market_orders")
-            daily_datas.append(MO_orderbook_states)
+            # MO_orderbook_states = get_daily_trades_data(full_filename, date)
+            # SAVE_PATH = os.path.join(ROOT_DIR, "data", "market_orders")
+            # daily_datas.append(MO_orderbook_states)
 
             # LO
             # LO_orderbook_states = get_daily_orderbook_data(full_filename, date, order_type="LO")
@@ -72,9 +72,9 @@ if __name__ == "__main__":
             # daily_datas.append(LO_orderbook_states)
 
             # CA
-            # CA_orderbook_states = get_daily_orderbook_data(full_filename, date, order_type="CA")
-            # SAVE_PATH = os.path.join(ROOT_DIR, "data", "cancellations")
-            # daily_datas.append(CA_orderbook_states)
+            CA_orderbook_states = get_daily_orderbook_data(full_filename, date, order_type="CA")
+            SAVE_PATH = os.path.join(ROOT_DIR, "data", "cancellations")
+            daily_datas.append(CA_orderbook_states)
 
             # QA
             # QA_orderbook_states = get_daily_orderbook_data(full_filename, date, order_type="QA")

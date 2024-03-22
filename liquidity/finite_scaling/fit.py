@@ -54,9 +54,9 @@ class FitResult:
 
 
 def fit_known_scaling_form(
-    T_values: List[float],
+    t_values: List[float],
     imbalance_values: List[float],
-    R_values: List[float],
+    r_values: List[float],
     known_alpha: float,
     known_beta: float,
     reflect_y: bool = False,
@@ -67,11 +67,11 @@ def fit_known_scaling_form(
 
     Parameters
     ----------
-    T_values : list of float
+    t_values : list of float
         List of binning frequencies or event-time scale values T.
     imbalance_values : list of float
         List of order flow imbalance values.
-    R_values : list of float
+    r_values : list of float
         List of aggregate impact values R.
     known_alpha : float
         Known alpha parameter from the scaling function.
@@ -116,10 +116,10 @@ def fit_known_scaling_form(
         return scaling_form(data, RN, QN, known_alpha, known_beta)
 
     # Perform least squares optimization
-    orderflow_imbalance = pd.DataFrame({"T": T_values, "imbalance": imbalance_values})
+    orderflow_imbalance = pd.DataFrame({"T": t_values, "imbalance": imbalance_values})
     residuals, params, model_predictions = lse(
         x_values=orderflow_imbalance,
-        y_values=R_values,
+        y_values=r_values,
         function=_known_scaling_form,
         reflect_y=reflect_y,
         bounds=bounds,
@@ -129,9 +129,9 @@ def fit_known_scaling_form(
 
 
 def fit_scaling_form(
-    T_values: List[float],
+    t_values: List[float],
     imbalance_values: List[float],
-    R_values: List[float],
+    r_values: List[float],
     reflect_y: bool = False,
     bounds: List[float] = (0, np.inf),
 ) -> Dict:
@@ -140,11 +140,11 @@ def fit_scaling_form(
 
     Parameters
     ----------
-    T_values : list of float
+    t_values : list of float
         List of binning frequencies or event-time scale values T.
     imbalance_values : list of float
         List of order flow imbalance values.
-    R_values : list of float
+    r_values : list of float
         List of aggregate impact values R.
     reflect_y : bool, optional
         If True, reflects the scaling function along the x-axis.
@@ -160,12 +160,12 @@ def fit_scaling_form(
     -----
     The function uses a neural network or the method of least squares to find the optimal scaling form parameters.
     """
-    orderflow_imbalance = pd.DataFrame({"T": T_values, "imbalance": imbalance_values})
+    orderflow_imbalance = pd.DataFrame({"T": t_values, "imbalance": imbalance_values})
 
     # Perform least squares optimization
     residuals, params, model_predictions = lse(
         x_values=orderflow_imbalance,
-        y_values=R_values,
+        y_values=r_values,
         function=scaling_form,
         reflect_y=reflect_y,
         bounds=bounds,
@@ -175,9 +175,9 @@ def fit_scaling_form(
 
 
 def fit_scaling_law(
-    T_values: List[float],
+    t_values: List[float],
     imbalance_values: List[float],
-    R_values: List[float],
+    r_values: List[float],
     reflect_y: bool = False,
     bounds: List[float] = (0, np.inf),
 ) -> Dict:
@@ -207,12 +207,12 @@ def fit_scaling_law(
     Assumes the conditional aggregate impact data ["T", "x_imbalance", "R"] has been renormalized.
     If reflect=True, fits scaling form reflection where we invert the scaling function along the x-axis.
     """
-    orderflow_imbalance = pd.DataFrame({"T": T_values, "imbalance": imbalance_values})
+    orderflow_imbalance = pd.DataFrame({"T": t_values, "imbalance": imbalance_values})
 
     # Perform least squares optimization
     residuals, params, model_predictions = lse(
         x_values=orderflow_imbalance,
-        y_values=R_values,
+        y_values=r_values,
         function=scaling_law,
         reflect_y=reflect_y,
         bounds=bounds,

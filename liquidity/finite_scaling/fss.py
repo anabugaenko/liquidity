@@ -8,8 +8,7 @@ import numpy as np
 import pandas as pd
 from typing import Dict, Tuple, List
 
-from powerlaw_function import Fit
-
+from powerlaw_function.powerlaw import Fit # from powerlaw_function import Fit
 from liquidity.util.utils import _validate_imbalances
 from liquidity.finite_scaling.fit import FitResult, fit_known_scaling_form
 
@@ -35,7 +34,7 @@ def _find_critical_exponents(
     if fitting_method == "MLE":
         return Fit(xy_values, xmin_distance="BIC", xmin_index=10)
 
-    return Fit(xy_values, nonlinear_fit_method=fitting_method, xmin_distance="BIC")
+    return Fit(xy_values, nonlinear_estimator=fitting_method, xmin_distance="BIC")
 
 
 def find_scale_factors(
@@ -87,8 +86,8 @@ def find_scale_factors(
 
         param = fit_known_scaling_form(
             imbalance_values=imbalance_values,
-            T_values=T_values,
-            R_values=R_values,
+            t_values=T_values,
+            r_values=R_values,
             known_alpha=alpha,
             known_beta=beta,
             reflect_y=reflect_y,
@@ -179,22 +178,22 @@ def mapout_scale_factors(
 
 
 def transform(
-    aggregate_impact_data: pd.DataFrame,
+    conditional_aggregate_impact: pd.DataFrame,
     rescaling_params: List[float],
     response_column: str = "R_cond",
-    imbalance_column: str = "volume_imbalance",
+    imbalance_column: str = "sign_imbalance",
 ) -> pd.DataFrame:
     """
     Transforms aggregate impact data at different scales, rescaling the data onto a single scaling function.
 
     Parameters
     ----------
-    aggregate_impact_data : pd.DataFrame
+    conditional_aggregate_impact : pd.DataFrame
         DataFrame containing conditional aggregate impact data.
     rescaling_params : List[float]
         Rescaling parameters for the master curve (chi, kappa, alpha, beta, CONST).
     imbalance_column : str, optional
-        Column name for the order flow imbalance data. Default is "volume_imbalance".
+        Column name for the order flow imbalance data. Default is "sign_imbalance".
 
     Returns
     -------
@@ -206,7 +205,7 @@ def transform(
     The data should return similar shape parameters for the different binning frequencies following renormalization.
     """
     _validate_imbalances(imbalance_column)
-    original_data = aggregate_impact_data.copy()
+    original_data = conditional_aggregate_impact.copy()
 
     original_data.dropna(inplace=True)
     original_data.replace([np.inf, -np.inf], np.nan, inplace=False)
@@ -214,9 +213,7 @@ def transform(
     # Do FSS analysis on original data using found rescaling exponents
     chi, kappa, alpha, beta, CONST = rescaling_params
     original_data[response_column] = original_data[response_column] / np.power(original_data["T"], chi)
-    original_data[imbalance_column] = original_data[imbalance_column] / np.power(
-        original_data["T"], kappa
-    )
+    original_data[imbalance_column] = original_data[imbalance_column] / np.power(original_data["T"], kappa)
 
     rescaled_data = original_data
 

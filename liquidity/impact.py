@@ -69,6 +69,7 @@ def compute_impact_from_returns(
         bin_frequencies: List[int],
         normalize: bool = False,
         conditional: bool = True,
+        remove_first: bool = False,
         imbalance_column: str = "sign_imbalance",
         normalization_constant: str = "daily",
 ):
@@ -103,7 +104,7 @@ def compute_impact_from_returns(
         masked_returns = orderbook_states.copy()
         masked_returns["R1_uncond"] = returns["R1_uncond"].values
 
-        aggregate_features = compute_aggregate_features(masked_returns, bin_frequencies, remove_first=False).reset_index()
+        aggregate_features = compute_aggregate_features(masked_returns, bin_frequencies, remove_first=remove_first).reset_index()
 
         aggregate_features = normalize_imbalances(
             aggregate_features,

@@ -8,7 +8,7 @@ from powerlaw_function import Fit
 from multiprocessing import Pool, cpu_count
 
 from hurst_exponent.acf import linear_acf, nonlinear_acf
-from hurst_exponent.hurst_exponent import standard_hurst, generalized_hurst
+from hurst_exponent.hurst import standard_hurst, generalized_hurst
 
 
 # Helper functions

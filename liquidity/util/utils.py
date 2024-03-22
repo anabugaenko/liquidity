@@ -295,7 +295,7 @@ def smooth_outliers(
     # TODO: default columns to None
     """
     if T:
-        all_columns = columns + [f"R{T}"]
+        all_columns = columns + [f"R{T}"] # FIXME: still required? given `R`
     else:
         all_columns = columns
 
